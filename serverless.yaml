@@ -3,6 +3,24 @@ service: nwassik-store
 
 frameworkVersion: "4"
 
+plugins:
+  - serverless-python-requirements
+
+package:
+  patterns:
+    - "!venv/**"
+    - "!node_modules/**"
+    - "!__pycache__/**"
+    - "!*.pyc"
+
+custom:
+  pythonRequirements:
+    usePoetry: false
+    dockerizePip: true # <<--- build wheels in Docker (required for compiled deps)
+    zip: true # optional; ensures packaging into a zip
+    dockerFile: Dockerfile
+    dockerBuildCmd: pip install -r requirements.txt --platform manylinux2014_x86_64
+
 provider:
   name: aws
   runtime: python3.11

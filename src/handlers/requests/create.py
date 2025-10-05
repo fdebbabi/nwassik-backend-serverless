@@ -1,6 +1,12 @@
 import json
 import uuid
 from datetime import datetime, timezone
+from decimal import Decimal
+
+import sys
+import os
+
+sys.path.insert(0, "/var/task/package")
 
 from src.lib.responses import success, error
 from src.schemas.request import RequestCreate
@@ -11,10 +17,11 @@ def create_request(event, context):
     try:
         # HTTP Validation
         body = json.loads(event.get('body', '{}'))
-        db = get_dynamodb_table_connexion()
         request_data = RequestCreate(**body)
         
         # Business Validation
+        db = get_dynamodb_table_connexion()
+
         if request_data.request_type == RequestType.pickup_and_delivery:
             if request_data.pickup_latitude is None or request_data.pickup_longitude is None:
                 return error("Pickup location is required for 'pickup_and_delivery' requests", 400)
@@ -32,16 +39,18 @@ def create_request(event, context):
             'sk': 'METADATA',
             
             'request_id': request_id,
-            'user_id': user_id,
             'request_type': request_data.request_type,
             'title': request_data.title,
             'description': request_data.description,
             'due_date': request_data.due_date.isoformat() if request_data.due_date else None,
 
-            'dropoff_latitude': request_data.dropoff_latitude,
-            'dropoff_longitude': request_data.dropoff_longitude,
-            'pickup_latitude': request_data.pickup_latitude,
-            'pickup_longitude': request_data.pickup_longitude,
+            'dropoff_latitude': Decimal(str(request_data.dropoff_latitude)),
+            'dropoff_longitude': Decimal(str(request_data.dropoff_longitude)),
+            'pickup_latitude': Decimal(str(request_data.pickup_latitude)),
+            'pickup_longitude': Decimal(str(request_data.pickup_longitude)),
+
+
+            'user_id': user_id,
             
             'created_at': datetime.now(timezone.utc).isoformat()
         }

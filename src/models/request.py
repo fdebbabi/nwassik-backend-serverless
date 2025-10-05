@@ -1,13 +1,9 @@
 from typing import Optional
-from datetime import datetime
-from enum import Enum
-from src.models.base import BaseModel
+from src.enums import RequestType
 
-class RequestType(str, Enum):
-    DELIVERY = "delivery"
-    PICKUP_DELIVERY = "pickup_delivery"
 
-class Request(BaseModel):
+class Request():
+    
     request_id: str
     request_type: RequestType
     title: str
