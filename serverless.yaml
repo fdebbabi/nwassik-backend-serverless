@@ -7,19 +7,19 @@ plugins:
   - serverless-python-requirements
 
 package:
-  patterns:
-    - "!venv/**"
-    - "!node_modules/**"
-    - "!__pycache__/**"
-    - "!*.pyc"
+  patterns: # Let's keep it minimalistic, maybe I will change it later
+    - "src/"
+    - ".gitignore"
+    - "README.md"
+    - "requirements.txt"
+    - "serverless.yaml"
 
 custom:
   pythonRequirements:
     usePoetry: false
-    dockerizePip: true # <<--- build wheels in Docker (required for compiled deps)
-    zip: true # optional; ensures packaging into a zip
+    dockerizePip: true # <<--- build wheels in Docker (required for compiled deps as I am on MacOS)
     dockerFile: Dockerfile
-    dockerBuildCmd: pip install -r requirements.txt --platform manylinux2014_x86_64
+    dockerBuildCmd: pip install -r requirements.txt -t /var/task --platform manylinux2014_x86_64
 
 provider:
   name: aws
@@ -36,7 +36,7 @@ provider:
           Action:
             - dynamodb:* # FIXME: too permissive
           Resource:
-            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:service}-dynamodb-${sls:stage}"
+            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${env:DYNAMODB_TABLE}"
 functions:
   # -----------------------------------------------------------------------------
   # HEALTH CHECK
@@ -95,7 +95,7 @@ resources:
     RequestsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:service}-dynamodb-${sls:stage}
+        TableName: ${env:DYNAMODB_TABLE}
         AttributeDefinitions:
           - AttributeName: pk
             AttributeType: S
