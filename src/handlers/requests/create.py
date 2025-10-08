@@ -13,29 +13,28 @@ from src.lib.database import get_dynamodb_table_connexion
 
 def create_request(event, context):
     try:
-        # HTTP Validation
         body = json.loads(event.get('body', '{}'))
-        request_data = RequestCreate(**body)
+
+        # NOTE: Validation could have been outside of Lambda and at API Gateway level, 
+        # for faster error response and no Lambda execution on schema validation failure, 
+        # but I need dynamic cross-attributes check which is not possible in API Gateway. 
+        # Only static stuff is supported for now in API Gateway
+        request_data = RequestCreate.model_validate(**body) 
         
-        # Business Validation
+        claims = event.get("requestContext").get("authorizer").get("claims")
+        user_id = claims.get("sub")
         db = get_dynamodb_table_connexion()
-
-        if request_data.request_type == RequestType.pickup_and_delivery:
-            if request_data.pickup_latitude is None or request_data.pickup_longitude is None:
-                return error("Pickup location is required for 'pickup_and_delivery' requests", 400)
-        
-
-        # TODO: Business logic currently is in handler, need to move it and isolate outside for reuse
-        # TODO: Get user from Cognito (mock for now)
-
-        user_id = "mock-user-id"
         request_id = str(uuid.uuid4())
         
+        # ISO string or fallback for GSI sort key
+        due_date_str = request_data.due_date.isoformat() if request_data.due_date else "0000-00-00T00:00:00Z" # FIXME: bad date
+
 
         request = {
-            'pk': f'REQUEST#{request_id}',
-            'sk': 'METADATA',
-            
+            "gsi_pk": f"USER#{user_id}",                     # GSI HASH
+            "gsi_sk": due_date_str,                          # GSI RANGE
+
+
             'request_id': request_id,
             'request_type': request_data.request_type,
             'title': request_data.title,
@@ -44,8 +43,8 @@ def create_request(event, context):
 
             'dropoff_latitude': Decimal(str(request_data.dropoff_latitude)),
             'dropoff_longitude': Decimal(str(request_data.dropoff_longitude)),
-            'pickup_latitude': Decimal(str(request_data.pickup_latitude)),
-            'pickup_longitude': Decimal(str(request_data.pickup_longitude)),
+            'pickup_latitude': Decimal(str(request_data.pickup_latitude)), # FIXME: error will be raised in case no pickup as request_data.pickup_latitude will be None
+            'pickup_longitude': Decimal(str(request_data.pickup_longitude)), # FIXME: Same issue
 
 
             'user_id': user_id,

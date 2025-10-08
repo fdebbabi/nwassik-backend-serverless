@@ -1,6 +1,5 @@
 from datetime import date, datetime
 from typing import Optional, Self
-import sys
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from src.enums import RequestType
@@ -30,8 +29,27 @@ class RequestCreate(BaseModel):
 
     due_date: Optional[date] = None
 
-    model_config = ConfigDict(from_attributes=True)
+    # -------------------------------
+    # Conditional / cross-field validation
+    # -------------------------------
+    @model_validator(mode='before')
+    def check_pickup_location(cls, values):
+        r_type = values.get("request_type")
+        pickup_lat = values.get("pickup_latitude")
+        pickup_lon = values.get("pickup_longitude")
 
+        if r_type == RequestType.pickup_and_delivery:
+            if pickup_lat is None or pickup_lon is None:
+                raise ValueError(
+                    "pickup_latitude and pickup_longitude must be set for pickup_and_delivery requests"
+                )
+        else:  # delivery_only
+            if pickup_lat is not None or pickup_lon is not None:
+                raise ValueError(
+                    "pickup_latitude and pickup_longitude must be None for delivery_only requests"
+                )
+        return values
+    
 
 class RequestOut(BaseModel):
     id: int
