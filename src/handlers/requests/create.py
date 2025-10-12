@@ -8,7 +8,6 @@ import os
 
 from src.lib.responses import success, error
 from src.schemas.request import RequestCreate
-from src.enums import RequestType
 from src.lib.database import get_dynamodb_table_connexion
 
 def create_request(event, context):
@@ -26,13 +25,12 @@ def create_request(event, context):
         db = get_dynamodb_table_connexion()
         request_id = str(uuid.uuid4())
         
-        # ISO string or fallback for GSI sort key
-        due_date_str = request_data.due_date.isoformat() if request_data.due_date else "0000-00-00T00:00:00Z" # FIXME: bad date
+        due_date_ts = request_data.due_date_ts if request_data.due_date_ts else int(datetime(2030, 1, 1).timestamp())
 
 
         request = {
             "gsi_pk": f"USER#{user_id}",                     # GSI HASH
-            "gsi_sk": due_date_str,                          # GSI RANGE
+            "gsi_sk": due_date_ts,                          # GSI RANGE
 
 
             'request_id': request_id,

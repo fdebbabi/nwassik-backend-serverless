@@ -1,4 +1,4 @@
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -26,8 +26,7 @@ class RequestCreate(BaseModel):
     dropoff_longitude: float = Field(..., ge=-180, le=180)
     pickup_latitude: Optional[float] = Field(None, ge=-90, le=90)
     pickup_longitude: Optional[float] = Field(None, ge=-180, le=180)
-
-    due_date: Optional[date] = None
+    due_date_ts: Optional[int] = Field(None, ge=int(datetime.now(timezone.utc).timestamp()), le=int(datetime(2027, 1, 1).timestamp()))
 
     # -------------------------------
     # Conditional / cross-field validation

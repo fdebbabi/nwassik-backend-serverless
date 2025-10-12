@@ -19,6 +19,7 @@ package:
     - "!__pycache__/**" # ← Explicitly exclude pycache
 
 custom:
+  dynamodbTableName: ${self:service}-dynamodb-${sls:stage}
   pythonRequirements:
     usePoetry: false
     dockerizePip: true # <<--- build wheels in Docker (required for compiled deps as I am on MacOS)
@@ -33,8 +34,6 @@ custom:
         --only-binary=:all: \
         --upgrade \
         -r requirements.txt
-
-  dynamodbTableName: ${self:service}-dynamodb-${sls:stage}
 
 provider:
   name: aws
@@ -74,7 +73,7 @@ functions:
   # -----------------------------------------------------------------------------
   # REQUESTS
   # -----------------------------------------------------------------------------
-  # FIXME: CORS is enabled from everywhere, please be explicit and specific or remove it
+  # FIXME: CORS is enabled from everywhere, I need to make it explicit/specific or remove it
   listRequests:
     handler: src/handlers/requests/list.list_requests
     events:
@@ -90,10 +89,10 @@ functions:
           path: /requests
           method: post
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId:
-              Ref: ApiGatewayCognitoAuthorizer
+          # authorizer:
+          #   type: COGNITO_USER_POOLS
+          #   authorizerId:
+          #     Ref: ApiGatewayCognitoAuthorizer
 
   getRequest:
     handler: src/handlers/requests/get.get_request
@@ -110,10 +109,10 @@ functions:
           path: /requests/{request_id}
           method: delete
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId:
-              Ref: ApiGatewayCognitoAuthorizer
+          # authorizer:
+          #   type: COGNITO_USER_POOLS
+          #   authorizerId:
+          #     Ref: ApiGatewayCognitoAuthorizer
 
   listMyRequests:
     handler: src/handlers/requests/mine.list_my_requests
@@ -122,10 +121,10 @@ functions:
           path: /requests/mine
           method: get
           cors: true
-          authorizer:
-            type: COGNITO_USER_POOLS
-            authorizerId:
-              Ref: ApiGatewayCognitoAuthorizer
+          # authorizer:
+          #   type: COGNITO_USER_POOLS
+          #   authorizerId:
+          #     Ref: ApiGatewayCognitoAuthorizer
 
 # -----------------------------------------------------------------------------
 # RESOURCES
@@ -136,74 +135,127 @@ resources:
     RequestsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: ${self:custom.dynamodbTableName}
+        TableName: requests
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: request_id
             AttributeType: S
-          - AttributeName: gsi_pk
+          - AttributeName: ALL_REQUESTS
             AttributeType: S
-          - AttributeName: gsi_sk
+          - AttributeName: due_date
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: creation_date
             AttributeType: S
         KeySchema:
           - AttributeName: request_id
             KeyType: HASH
+
         GlobalSecondaryIndexes:
-          - IndexName: GSI_DueDate
+          # GSI 1 - Global feed (sorted by due_date)
+          # TODO: Hot partition possibility in case of usage spike, but for early phase this is OK
+          # Note: Data pagination is independent of storage type (dynamodb, redis, ..), so later I can
+          # simply add Redis in front of dynamodb with Geo proximity feature/filter
+          - IndexName: AllRequestsGSI
             KeySchema:
-              - AttributeName: gsi_pk
+              - AttributeName: ALL_REQUESTS
                 KeyType: HASH
-              - AttributeName: gsi_sk
+              - AttributeName: due_date
+                KeyType: RANGE
+            Projection:
+              ProjectionType: ALL
+
+          # GSI 2 - User-created requests
+          - IndexName: UserRequestsGSI
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+              - AttributeName: creation_date
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL # TODO: Probably Should change that to INCLUDE with only necessary fields
+      FavoritesTable:
+        Type: AWS::DynamoDB::Table
+        Properties:
+          TableName: favorites
+          BillingMode: PAY_PER_REQUEST
+          AttributeDefinitions:
+            - AttributeName: favorite_id
+              AttributeType: S
+            - AttributeName: user_id
+              AttributeType: S
+            - AttributeName: request_id
+              AttributeType: S
+          KeySchema:
+            - AttributeName: favorite_id
+              KeyType: HASH
 
-    # --- Cognito user pool -----------------------
-    CognitoUserPool:
-      Type: AWS::Cognito::UserPool
-      Properties:
-        UserPoolName: ${self:service}-cognito-userpool-${sls:stage}
-        AutoVerifiedAttributes:
-          - email
-        # TODO: Product decision maybe we should add also phone number as a username
-        UsernameAttributes:
-          - email
-        Policies:
-          # FIXME: Policy too permissive
-          PasswordPolicy:
-            MinimumLength: 5
-            RequireLowercase: false
-            RequireNumbers: false
-            RequireSymbols: false
-            RequireUppercase: false
+          GlobalSecondaryIndexes:
+            - IndexName: GSI_UserFavorites
+              KeySchema:
+                - AttributeName: user_id
+                  KeyType: HASH
+              Projection:
+                ProjectionType: INCLUDE
+                NonKeyAttributes:
+                  - request_id
 
-    # --- Cognito user pool client-----------------------
-    CognitoUserPoolClient:
-      Type: AWS::Cognito::UserPoolClient
-      Properties:
-        ClientName: ${self:service}-cognito-userpool-client-${sls:stage}
-        UserPoolId:
-          Ref: CognitoUserPool
-        GenerateSecret: false
-        ExplicitAuthFlows:
-          - ALLOW_USER_PASSWORD_AUTH
-          - ALLOW_REFRESH_TOKEN_AUTH
-          - ALLOW_USER_SRP_AUTH
+            - IndexName: GSI_RequestFavorites
+              KeySchema:
+                - AttributeName: request_id
+                  KeyType: HASH
+              Projection:
+                ProjectionType: INCLUDE
+                NonKeyAttributes:
+                  - user_id
 
-        # TODO: Probably should add Google and Facebook as the only Social Providers in addition to cognito
-        SupportedIdentityProviders:
-          - COGNITO
+    # # --- Cognito user pool -----------------------
+    # CognitoUserPool:
+    #   Type: AWS::Cognito::UserPool
+    #   Properties:
+    #     UserPoolName: ${self:service}-cognito-userpool-${sls:stage}
+    #     AutoVerifiedAttributes:
+    #       - email
+    #     # TODO: Product decision maybe we should add also phone number as a username
+    #     UsernameAttributes:
+    #       - email
+    #     Policies:
+    #       # FIXME: Policy too permissive
+    #       PasswordPolicy:
+    #         MinimumLength: 5
+    #         RequireLowercase: false
+    #         RequireNumbers: false
+    #         RequireSymbols: false
+    #         RequireUppercase: false
 
-    # --- API Gateway authorizer (REST API v1) ----
-    ApiGatewayCognitoAuthorizer:
-      Type: AWS::ApiGateway::Authorizer
-      Properties:
-        Name: ${self:service}-cognito-authorizer-${sls:stage}
-        Type: COGNITO_USER_POOLS
-        RestApiId:
-          Ref: ApiGatewayRestApi
-        IdentitySource: method.request.header.Authorization # This is the Authorization header
-        ProviderARNs:
-          - Fn::GetAtt:
-              - CognitoUserPool
-              - Arn
+    # # --- Cognito user pool client-----------------------
+    # CognitoUserPoolClient:
+    #   Type: AWS::Cognito::UserPoolClient
+    #   Properties:
+    #     ClientName: ${self:service}-cognito-userpool-client-${sls:stage}
+    #     UserPoolId:
+    #       Ref: CognitoUserPool
+    #     GenerateSecret: false
+    #     ExplicitAuthFlows:
+    #       - ALLOW_USER_PASSWORD_AUTH
+    #       - ALLOW_REFRESH_TOKEN_AUTH
+    #       - ALLOW_USER_SRP_AUTH
+
+    #     # TODO: Probably should add Google and Facebook as the only Social Providers in addition to cognito
+    #     SupportedIdentityProviders:
+    #       - COGNITO
+
+    # # --- API Gateway authorizer (REST API v1) ----
+    # ApiGatewayCognitoAuthorizer:
+    #   Type: AWS::ApiGateway::Authorizer
+    #   Properties:
+    #     Name: ${self:service}-cognito-authorizer-${sls:stage}
+    #     Type: COGNITO_USER_POOLS
+    #     RestApiId:
+    #       Ref: ApiGatewayRestApi
+    #     IdentitySource: method.request.header.Authorization # This is the Authorization header
+    #     ProviderARNs:
+    #       - Fn::GetAtt:
+    #           - CognitoUserPool
+    #           - Arn
