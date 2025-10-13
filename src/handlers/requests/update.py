@@ -3,9 +3,6 @@ from src.lib.responses import success, error
 from src.lib.database import get_dynamodb_table_requests_connexion
 from src.schemas.request import RequestUpdate
 
-from decimal import Decimal
-from datetime import datetime, timezone
-
 
 def update_request(event, _):
     try:

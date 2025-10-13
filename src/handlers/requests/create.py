@@ -32,7 +32,7 @@ def create_request(event, _):
             # TODO: Make due date flexible with no due_date necessary
             # due date for now is rigid/mandatory, that's a good use case to start with
             "due_date_ts": request_data.due_date_ts,
-            "request_type": request_data.request_type,
+            "request_type": request_data.request_type.value,
             "created_at": datetime.now(timezone.utc).isoformat(),
             "title": request_data.title,
             "description": request_data.description,

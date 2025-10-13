@@ -9,9 +9,9 @@ def list_requests(event, _):
     try:
         db = get_dynamodb_table_requests_connexion()
 
-        # TODO: Make sure timestamp makes sense, maybe someone is playing with the API
+        # FIXME: Make sure timestamp makes sense, maybe someone is playing with the API
         # Validation also should be in API Gateway level as:
-        # mandatory, integer and within fixed wide range
+        # mandatory, type integer and within fixed wide range
         timestamp_qs = int(event.get("queryStringParameters").get("from_timestamp"))
 
         # Query the AllRequestsGSI
