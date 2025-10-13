@@ -2,15 +2,11 @@ import json
 import uuid
 from datetime import datetime, timezone
 from decimal import Decimal
-
-import sys
-import os
-
 from src.lib.responses import success, error
-from src.schemas.request import RequestCreate
-from src.lib.database import get_dynamodb_table_connexion
+from src.schemas.request import RequestCreate, RequestType
+from src.lib.database import get_dynamodb_table_requests_connexion
 
-def create_request(event, context):
+def create_request(event, _):
     try:
         body = json.loads(event.get('body', '{}'))
 
@@ -22,34 +18,35 @@ def create_request(event, context):
         
         claims = event.get("requestContext").get("authorizer").get("claims")
         user_id = claims.get("sub")
-        db = get_dynamodb_table_connexion()
-        request_id = str(uuid.uuid4())
-        
-        due_date_ts = request_data.due_date_ts if request_data.due_date_ts else int(datetime(2030, 1, 1).timestamp())
+        db = get_dynamodb_table_requests_connexion()
 
+        # FIXME: Need to limit number of requests created by user for spam.
+        # Maximum 20 requests should be allowed at the same time
+        # He needs to delete some of the old if he has already capped out
+        request_id = str(uuid.uuid4())
 
         request = {
-            "gsi_pk": f"USER#{user_id}",                     # GSI HASH
-            "gsi_sk": due_date_ts,                          # GSI RANGE
-
-
             'request_id': request_id,
+            'user_id': user_id,
+
+            # TODO: Make due date flexible with no due_date necessary
+            # due date for now is rigid/mandatory, that's a good use case to start with
+            'due_date_ts': request_data.due_date_ts,
+            
             'request_type': request_data.request_type,
+            'created_at': datetime.now(timezone.utc).isoformat(),
             'title': request_data.title,
             'description': request_data.description,
-            'due_date': request_data.due_date.isoformat() if request_data.due_date else None,
-
             'dropoff_latitude': Decimal(str(request_data.dropoff_latitude)),
             'dropoff_longitude': Decimal(str(request_data.dropoff_longitude)),
-            'pickup_latitude': Decimal(str(request_data.pickup_latitude)), # FIXME: error will be raised in case no pickup as request_data.pickup_latitude will be None
-            'pickup_longitude': Decimal(str(request_data.pickup_longitude)), # FIXME: Same issue
-
-
-            'user_id': user_id,
-            
-            'created_at': datetime.now(timezone.utc).isoformat()
+            "ALL_REQUESTS": "ALL",
         }
-        
+
+        if request_data.request_type is RequestType.pickup_and_delivery:
+            request['pickup_latitude'] = Decimal(str(request_data.pickup_latitude))
+            request['pickup_longitude'] = Decimal(str(request_data.pickup_longitude))
+
+
         db.put_item(Item=request)
 
 

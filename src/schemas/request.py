@@ -2,7 +2,11 @@ from datetime import date, datetime, timezone
 from typing import Optional, Self
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from src.enums import RequestType
+from enum import Enum
+
+class RequestType(str, Enum):
+    delivery_only = "delivery_only"
+    pickup_and_delivery = "pickup_and_delivery"
 
 class LocationFilter(BaseModel):
     lat: Optional[float] = Field(None, ge=-90, le=90)
@@ -18,31 +22,31 @@ class LocationFilter(BaseModel):
         return values
 
 class RequestCreate(BaseModel):
-    request_type: RequestType = RequestType.delivery_only
+    due_date_ts: int = Field(ge=int(datetime.now(timezone.utc).timestamp()), le=int(datetime(2027, 1, 1).timestamp()))
+    request_type: RequestType
+
     title: str = Field(..., max_length=255)
     description: str
-
     dropoff_latitude: float = Field(..., ge=-90, le=90)
     dropoff_longitude: float = Field(..., ge=-180, le=180)
     pickup_latitude: Optional[float] = Field(None, ge=-90, le=90)
     pickup_longitude: Optional[float] = Field(None, ge=-180, le=180)
-    due_date_ts: Optional[int] = Field(None, ge=int(datetime.now(timezone.utc).timestamp()), le=int(datetime(2027, 1, 1).timestamp()))
 
     # -------------------------------
     # Conditional / cross-field validation
     # -------------------------------
-    @model_validator(mode='before')
+    @model_validator(mode='after')
     def check_pickup_location(cls, values):
-        r_type = values.get("request_type")
-        pickup_lat = values.get("pickup_latitude")
-        pickup_lon = values.get("pickup_longitude")
+        r_type = values.request_type
+        pickup_lat = values.pickup_latitude
+        pickup_lon = values.pickup_longitude
 
         if r_type == RequestType.pickup_and_delivery:
             if pickup_lat is None or pickup_lon is None:
                 raise ValueError(
                     "pickup_latitude and pickup_longitude must be set for pickup_and_delivery requests"
                 )
-        else:  # delivery_only
+        else:
             if pickup_lat is not None or pickup_lon is not None:
                 raise ValueError(
                     "pickup_latitude and pickup_longitude must be None for delivery_only requests"
@@ -70,11 +74,25 @@ class RequestOut(BaseModel):
 
 class RequestUpdate(BaseModel):
     title: Optional[str] = Field(None, max_length=255)
-    description: Optional[str] = None
-    dropoff_latitude: Optional[float] = Field(None, ge=-90, le=90)
-    dropoff_longitude: Optional[float] = Field(None, ge=-180, le=180)
-    pickup_latitude: Optional[float] = Field(None, ge=-90, le=90)
-    pickup_longitude: Optional[float] = Field(None, ge=-180, le=180)
-    due_date: Optional[date] = None
+    description: Optional[str] = Field(None)
 
-    model_config = ConfigDict(from_attributes=True)
+    # dropoff_latitude: Optional[float] = Field(None, ge=-90, le=90)
+    # dropoff_longitude: Optional[float] = Field(None, ge=-180, le=180)
+    # pickup_latitude: Optional[float] = Field(None, ge=-90, le=90)
+    # pickup_longitude: Optional[float] = Field(None, ge=-180, le=180)
+    # due_date: Optional[date] = None
+
+    @model_validator(mode="after")
+    def check_setup_and_filled(cls, values):
+        """
+        Ensure at least one of title or description is provided.
+        """
+        title, description = values.title, values.description
+        
+        if title is None and description is None:
+            raise ValueError("At least one of 'title' or 'description' must be provided.")
+        
+        if values.title is not None and not values.title.strip():
+            raise ValueError("Title cannot be empty or whitespace.")
+
+        return values

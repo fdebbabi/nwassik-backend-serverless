@@ -19,7 +19,9 @@ package:
     - "!__pycache__/**" # ← Explicitly exclude pycache
 
 custom:
-  dynamodbTableName: ${self:service}-dynamodb-${sls:stage}
+  dynamodbTables:
+    RequestsTableName: ${self:service}-dynamodb-requests-${sls:stage}
+    FavoritesTableName: ${self:service}-dynamodb-favorites-${sls:stage}
   pythonRequirements:
     usePoetry: false
     dockerizePip: true # <<--- build wheels in Docker (required for compiled deps as I am on MacOS)
@@ -42,11 +44,12 @@ provider:
   stage: NotToUseStage
   environment:
     STAGE: ${sls:stage}
-    DYNAMODB_TABLE: ${self:custom.dynamodbTableName}
-    COGNITO_USER_POOL_ID:
-      Ref: CognitoUserPool
-    COGNITO_USER_POOL_CLIENT_ID:
-      Ref: CognitoUserPoolClient
+    DYNAMODB_TABLE_REQUESTS: ${self:custom.dynamodbTables.RequestsTableName}
+    DYNAMODB_TABLE_FAVORITES: ${self:custom.dynamodbTables.FavoritesTableName}
+    # COGNITO_USER_POOL_ID:
+    #   Ref: CognitoUserPool
+    # COGNITO_USER_POOL_CLIENT_ID:
+    #   Ref: CognitoUserPoolClient
 
   # TODO: Upgrade all http with httpApi for single place CORS with API Gateway V2
   # httpApi:
@@ -58,7 +61,8 @@ provider:
           Action:
             - dynamodb:* # FIXME: too permissive
           Resource:
-            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:custom.dynamodbTableName}"
+            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:custom.dynamodbTables.RequestsTableName}*" # Indexes are mandatory
+            - "arn:aws:dynamodb:${aws:region}:${aws:accountId}:table/${self:custom.dynamodbTables.FavoritesTableName}*"
 functions:
   # -----------------------------------------------------------------------------
   # HEALTH CHECK
@@ -135,15 +139,15 @@ resources:
     RequestsTable:
       Type: AWS::DynamoDB::Table
       Properties:
-        TableName: requests
+        TableName: ${self:custom.dynamodbTables.RequestsTableName}
         BillingMode: PAY_PER_REQUEST
         AttributeDefinitions:
           - AttributeName: request_id
             AttributeType: S
           - AttributeName: ALL_REQUESTS
             AttributeType: S
-          - AttributeName: due_date
-            AttributeType: S
+          - AttributeName: due_date_ts
+            AttributeType: N
           - AttributeName: user_id
             AttributeType: S
           - AttributeName: creation_date
@@ -161,7 +165,7 @@ resources:
             KeySchema:
               - AttributeName: ALL_REQUESTS
                 KeyType: HASH
-              - AttributeName: due_date
+              - AttributeName: due_date_ts
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL
@@ -175,40 +179,40 @@ resources:
                 KeyType: RANGE
             Projection:
               ProjectionType: ALL # TODO: Probably Should change that to INCLUDE with only necessary fields
-      FavoritesTable:
-        Type: AWS::DynamoDB::Table
-        Properties:
-          TableName: favorites
-          BillingMode: PAY_PER_REQUEST
-          AttributeDefinitions:
-            - AttributeName: favorite_id
-              AttributeType: S
-            - AttributeName: user_id
-              AttributeType: S
-            - AttributeName: request_id
-              AttributeType: S
-          KeySchema:
-            - AttributeName: favorite_id
-              KeyType: HASH
+    FavoritesTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:custom.dynamodbTables.FavoritesTableName}
+        BillingMode: PAY_PER_REQUEST
+        AttributeDefinitions:
+          - AttributeName: favorite_id
+            AttributeType: S
+          - AttributeName: user_id
+            AttributeType: S
+          - AttributeName: request_id
+            AttributeType: S
+        KeySchema:
+          - AttributeName: favorite_id
+            KeyType: HASH
 
-          GlobalSecondaryIndexes:
-            - IndexName: GSI_UserFavorites
-              KeySchema:
-                - AttributeName: user_id
-                  KeyType: HASH
-              Projection:
-                ProjectionType: INCLUDE
-                NonKeyAttributes:
-                  - request_id
+        GlobalSecondaryIndexes:
+          - IndexName: GSI_UserFavorites
+            KeySchema:
+              - AttributeName: user_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - request_id
 
-            - IndexName: GSI_RequestFavorites
-              KeySchema:
-                - AttributeName: request_id
-                  KeyType: HASH
-              Projection:
-                ProjectionType: INCLUDE
-                NonKeyAttributes:
-                  - user_id
+          - IndexName: GSI_RequestFavorites
+            KeySchema:
+              - AttributeName: request_id
+                KeyType: HASH
+            Projection:
+              ProjectionType: INCLUDE
+              NonKeyAttributes:
+                - user_id
 
     # # --- Cognito user pool -----------------------
     # CognitoUserPool:
