@@ -4,7 +4,6 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from src.lib.responses import success, error
 from src.schemas.request import RequestCreate, RequestType
-from src.lib.database import get_dynamodb_table_requests_connexion
 
 
 def create_request(event, _):
@@ -13,17 +12,16 @@ def create_request(event, _):
 
         # NOTE: Validation could have been outside of Lambda and at API Gateway level,
         # for faster error response and no Lambda execution on schema validation failure,
-        # but I need dynamic cross-attributes check which is not possible in API Gateway.
+        # but I need dynamic cross attributes check which is not possible in API Gateway.
         # Only static stuff is supported for now in API Gateway
         request_data = RequestCreate.model_validate(body)
 
         claims = event.get("requestContext").get("authorizer").get("claims")
         user_id = claims.get("sub")
-        db = get_dynamodb_table_requests_connexion()
 
         # FIXME: Need to limit number of requests created by user for spam.
         # Maximum 20 requests should be allowed at the same time
-        # He needs to delete some of the old if he has already capped out
+        # He needs to delete some of the old one if he has already capped out
         request_id = str(uuid.uuid4())
 
         request = {

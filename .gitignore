@@ -24,3 +24,5 @@ example.json
 
 # Logs
 *.log
+
+.local/

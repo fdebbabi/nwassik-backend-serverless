@@ -2,7 +2,7 @@
 
 ## Product Overview
 
-**Nwassik Store** is a reverse marketplace platform designed to help users request products or services, which others (providers) can fulfill. It focuses especially on enabling people (example: in Tunisia) to request goods or services, including deliveries from abroad (example: from France), with, initially, offline cash payments. It empowers individuals to get better deals, avoid high local tariffs, and enables providers to earn money by fulfilling these requests.
+**Nwassik Store** is a reverse marketplace platform designed to help users request products or services, which others (providers) can fulfill. It focuses especially on enabling people (example: in Tunisia) to request goods or services, including deliveries from abroad (example: from France), with, initially, offline cash payments between both parties (or free if accepted). It empowers individuals to get better deals, avoid high local tariffs, and enables providers to earn/save money by fulfilling these requests.
 
 ## What Nwassik Store Allows
 
@@ -10,9 +10,15 @@
 
 - **Post a Request:**
 
-  - A user posts a request for an item or service they want.
-  - They specify where they want it delivered (drop-off location), and optionally, from where it should be picked up (pickup location).
-  - A due date can also be specified by when the request should be completed.
+  - A user posts a request for an item or service they want
+  - Three request options are available:
+    - Online Service
+      - Users specify what online service they need (Netflix, plane ticket,..) and meetup location for transaction
+    - Buy & Deliver service
+      - Users specify what items they want bought and to where should be delivered
+    - Pickup & Deliver service
+      - Users specify from where items should be picked, and to where should be delivered
+  - A due date can also be specified informing when the request should be completed.
 
 - **Providers Respond:**
 
@@ -27,48 +33,43 @@
 
   - Payments happen offline, usually cash on delivery or during a physical handover of the item/service.
 
-### Two Workflows Supported
-
-- **Simple Delivery:**
-  - Requester asks for something to be delivered to a place (drop-off only).
-- **Pickup and Delivery:**
-  - Requester asks for something to be picked up from a place and delivered to another.
-
 ## How It Works (Non-Technical Flow)
 
 1. **User Registration/Login**
 2. **Posting Requests:**
    - User writes what they need.
-   - Optionally sets pickup and dropoff locations (with map based location search).
+   - Optionally sets pickup/dropoff/meetup locations (with map based location search).
    - Sets due date if necessary.
 3. **Viewing Requests:**
-   - Providers browse public listings based on filters.
+   - Providers browse public listings based on filters (location, due date, ..)
 4. **Contact and Negotiation:**
-   - Provider sends a chat message about the request.
-   - Requester and Provider discuss details privately.
+   - Provider sends a chat message about the request
+   - Requester and Provider discuss details privately
 5. **Agreement and Delivery:**
-   - They agree offline.
-   - Provider fulfills the request.
+   - They agree offline
+   - Provider fulfills the request
 6. **Cash Payment on Delivery:**
-   - No online payments at this stage.
-   - Subscription based model will be used on the providers side.
+   - No online payments at this stage
+   - Subscription based model in the future will be used on the providers side
 
 ## Technical Architecture (Serverless Version)
 
 ### Technologies Used
 
-| Layer                     | Technology / Service                           |
-|---------------------------|------------------------------------------------|
-| Backend API               | AWS Lambda (Python 3.13)                       |
-| API Gateway               | AWS API Gateway (REST/WebSocket endpoints)     |
-| Database                  | AWS DynamoDB (NoSQL, serverless)               |
-| Storage                   | AWS S3 (file uploads, static assets)           |
-| Messaging / Notifications | AWS SNS / SQS (event-driven notifications)     |
-| Authentication            | AWS Cognito (user pools & JWT tokens)          |
-| Deployment / IaC          | Serverless Framework / CloudFormation / Github |
-| Monitoring / Logging      | AWS CloudWatch Logs & Metrics                  |
-| Tracing                   | AWS X-Ray                                      |
-| Secrets Management        | AWS Secrets Manager / Parameter Store          |
+| Layer                     | Technology / Service                       |
+|---------------------------|--------------------------------------------|
+| Backend API               | AWS Lambda (Python 3.13)                   |
+| API Gateway               | AWS API Gateway (REST/WebSocket endpoints) |
+| App Database              | AWS RDS/ Aurora DSQL                       |
+| Chat Database             | AWS DynamoDB                               |
+| Storage                   | AWS S3 (file uploads, static assets)       |
+| Messaging / Notifications | AWS SNS / SQS (event-driven notifications) |
+| Authentication            | AWS Cognito (user pools & JWT tokens)      |
+| App Deployment            | Serverless Framework (CloudFormation)      |
+| Infra Deployment / IaC    | Terraform                                  |
+| Monitoring / Logging      | AWS CloudWatch Logs & Metrics              |
+| Tracing                   | AWS X-Ray                                  |
+| Secrets Management        | AWS Secrets Manager / Parameter Store      |
 
 ---
 

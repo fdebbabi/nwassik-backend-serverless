@@ -6,8 +6,9 @@ from enum import Enum
 
 
 class RequestType(str, Enum):
-    delivery_only = "delivery_only"
-    pickup_and_delivery = "pickup_and_delivery"
+    buy_and_deliver = "buy_and_deliver"
+    pickup_and_deliver = "pickup_and_deliver"
+    online_service = "online_service"
 
 
 class LocationFilter(BaseModel):
@@ -33,32 +34,83 @@ class RequestCreate(BaseModel):
     )
     request_type: RequestType
 
-    title: str = Field(..., max_length=255)
-    description: str
-    dropoff_latitude: float = Field(..., ge=-90, le=90)
-    dropoff_longitude: float = Field(..., ge=-180, le=180)
+    title: str = Field(..., max_length=100)  # TODO: decide adequate length
+    description: str = Field(..., max_length=500)  # TODO: decide adequate length
+
+    # Product delivery locations
     pickup_latitude: Optional[float] = Field(None, ge=-90, le=90)
     pickup_longitude: Optional[float] = Field(None, ge=-180, le=180)
+    dropoff_latitude: Optional[float] = Field(None, ge=-90, le=90)
+    dropoff_longitude: Optional[float] = Field(None, ge=-180, le=180)
+
+    # Service / meetup location
+    meetup_latitude: Optional[float] = Field(None, ge=-90, le=90)
+    meetup_longitude: Optional[float] = Field(None, ge=-180, le=180)
 
     # -------------------------------
     # Conditional / cross-field validation
     # -------------------------------
     @model_validator(mode="after")
     def check_pickup_location(self):
+        """
+        Conditional validation for request types:
+        - buy_and_deliver: dropoff location required
+        - pickup_and_deliver: pickup + dropoff locations both required
+        - online_service: meetup location required
+        """
         r_type = self.request_type
+
         pickup_lat = self.pickup_latitude
         pickup_lon = self.pickup_longitude
+        drop_off_lat = self.dropoff_latitude
+        drop_off_lon = self.dropoff_latitude
+        meetup_lat = self.meetup_latitude
+        meetup_lon = self.meetup_longitude
 
-        if r_type == RequestType.pickup_and_delivery:
-            if pickup_lat is None or pickup_lon is None:
+        # buy & deliver check
+        if r_type == RequestType.buy_and_deliver:
+            if drop_off_lat is None or drop_off_lon is None:
                 raise ValueError(
-                    "pickup_latitude and pickup_longitude must be set for pickup_and_delivery requests"
+                    "dropoff_latitude and dropoff_latitude must be set for buy_and_deliver requests"
                 )
+            else:
+                if any(
+                    v is not None
+                    for v in (pickup_lat, pickup_lon, meetup_lat, meetup_lon)
+                ):
+                    raise ValueError(
+                        "pickup_latitude, pickup_longitude, meetup_latitude and meetup_longitude all must be None for buy_and_deliver requests"
+                    )
+
+        # pickup & deliver check
+        elif r_type == RequestType.pickup_and_deliver:
+            if any(
+                v is None for v in (pickup_lat, pickup_lon, drop_off_lat, drop_off_lon)
+            ):
+                raise ValueError(
+                    "pickup_latitude, pickup_longitude, dropoff_latitude and dropoff_latitude all must be set for pickup_and_deliver requests"
+                )
+            else:
+                if any(v is not None for v in (meetup_lat, meetup_lon)):
+                    raise ValueError(
+                        "meetup_latitude and meetup_longitude must not be set for pickup_and_deliver requests"
+                    )
+
+        # online service check
         else:
-            if pickup_lat is not None or pickup_lon is not None:
+            if any(v is None for v in (meetup_lat, meetup_lon)):
                 raise ValueError(
-                    "pickup_latitude and pickup_longitude must be None for delivery_only requests"
+                    "meetup_latitude and meetup_longitude must be set for online_service requests"
                 )
+            else:
+                if any(
+                    v is not None
+                    for v in (pickup_lat, pickup_lon, drop_off_lat, drop_off_lon)
+                ):
+                    raise ValueError(
+                        "pickup_latitude, pickup_longitude, dropoff_latitude and dropoff_latitude all must be None for online_service requests"
+                    )
+
         return self
 
 
