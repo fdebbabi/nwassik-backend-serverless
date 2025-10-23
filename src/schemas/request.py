@@ -28,10 +28,7 @@ class LocationFilter(BaseModel):
 
 
 class RequestCreate(BaseModel):
-    due_date_ts: int = Field(
-        ge=int(datetime.now(timezone.utc).timestamp()),
-        le=int(datetime(2027, 1, 1).timestamp()),
-    )
+    due_date: datetime
     request_type: RequestType
 
     title: str = Field(..., max_length=100)  # TODO: decide adequate length
@@ -46,6 +43,19 @@ class RequestCreate(BaseModel):
     # Service / meetup location
     meetup_latitude: Optional[float] = Field(None, ge=-90, le=90)
     meetup_longitude: Optional[float] = Field(None, ge=-180, le=180)
+
+    @model_validator(mode="after")
+    def validate_due_date(self):
+        now_utc = datetime.now(timezone.utc)
+
+        if self.due_date.tzinfo is None:
+            raise ValueError("due_date must be timezone-aware (UTC)")
+
+        # Ensure due_date is in the future
+        if self.due_date <= now_utc:
+            raise ValueError("due_date must be in the future (UTC)")
+
+        return self
 
     # -------------------------------
     # Conditional / cross-field validation
