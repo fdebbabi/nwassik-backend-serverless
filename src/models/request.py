@@ -35,16 +35,19 @@ class Request(Base):
         "BuyAndDeliverRequest",
         uselist=False,
         cascade="all, delete",
+        lazy="joined",  # ⬅️ Always eager load with JOIN
     )
     pickup_and_deliver = relationship(
         "PickupAndDeliverRequest",
         uselist=False,
         cascade="all, delete",
+        lazy="joined",
     )
     online_service = relationship(
         "OnlineServiceRequest",
         uselist=False,
         cascade="all, delete",
+        lazy="joined",
     )
 
 

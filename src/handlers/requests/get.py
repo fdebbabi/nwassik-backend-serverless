@@ -11,8 +11,11 @@ def get_request(event, _):
 
         if not request:
             return error("Request not found", 404)
+        print(">>> AAA")
         serialized_request = serialize_complete_request(request)
+        print(">>> BBB")
         print(serialized_request)
-        return success({"request": serialized_request.model_dump()})
+        print(">>> CCC")
+        return success({"request": serialized_request.model_dump(mode="json")})
     except Exception as e:
         return error(str(e))
