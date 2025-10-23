@@ -1,35 +1,19 @@
-from datetime import date, datetime, timezone
-from typing import Optional, Self
-
+from datetime import datetime, timezone
+from typing import Optional, Self, Union
+from uuid import UUID
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 from enum import Enum
 
 
 class RequestType(str, Enum):
-    buy_and_deliver = "buy_and_deliver"
-    pickup_and_deliver = "pickup_and_deliver"
-    online_service = "online_service"
-
-
-class LocationFilter(BaseModel):
-    lat: Optional[float] = Field(None, ge=-90, le=90)
-    lng: Optional[float] = Field(None, ge=-180, le=180)
-    radius_km: Optional[float] = Field(10.0, gt=0)
-
-    @model_validator(mode="after")
-    def validate_all_or_none(cls: type[Self], values: Self):
-        lat, lng, radius = values.lat, values.lng, values.radius_km
-        filled = [lat is not None, lng is not None, radius is not None]
-        if any(filled) and not all(filled):
-            raise ValueError(
-                "All of lat, lng, and radius_km must be provided together."
-            )
-        return values
+    BUY_AND_DELIVER = "buy_and_deliver"
+    PICKUP_AND_DELIVER = "pickup_and_deliver"
+    ONLINE_SERVICE = "online_service"
 
 
 class RequestCreate(BaseModel):
     due_date: Optional[datetime] = Field(None)
-    request_type: RequestType
+    type: RequestType
 
     title: str = Field(..., max_length=100)  # TODO: decide adequate length
     description: str = Field(..., max_length=500)  # TODO: decide adequate length
@@ -64,11 +48,11 @@ class RequestCreate(BaseModel):
     def check_pickup_location(self):
         """
         Conditional validation for request types:
-        - buy_and_deliver: dropoff location required
-        - pickup_and_deliver: pickup + dropoff locations both required
-        - online_service: meetup location required
+        - BUY_AND_DELIVER: dropoff location required
+        - PICKUP_AND_DELIVER: pickup + dropoff locations both required
+        - ONLINE_SERVICE: meetup location required
         """
-        r_type = self.request_type
+        r_type = self.type
 
         pickup_lat = self.pickup_latitude
         pickup_lon = self.pickup_longitude
@@ -78,10 +62,10 @@ class RequestCreate(BaseModel):
         meetup_lon = self.meetup_longitude
 
         # buy & deliver check
-        if r_type == RequestType.buy_and_deliver:
+        if r_type == RequestType.BUY_AND_DELIVER:
             if drop_off_lat is None or drop_off_lon is None:
                 raise ValueError(
-                    "dropoff_latitude and dropoff_latitude must be set for buy_and_deliver requests"
+                    "dropoff_latitude and dropoff_latitude must be set for BUY_AND_DELIVER requests"
                 )
             else:
                 if any(
@@ -89,28 +73,28 @@ class RequestCreate(BaseModel):
                     for v in (pickup_lat, pickup_lon, meetup_lat, meetup_lon)
                 ):
                     raise ValueError(
-                        "pickup_latitude, pickup_longitude, meetup_latitude and meetup_longitude all must be None for buy_and_deliver requests"
+                        "pickup_latitude, pickup_longitude, meetup_latitude and meetup_longitude all must be None for BUY_AND_DELIVER requests"
                     )
 
         # pickup & deliver check
-        elif r_type == RequestType.pickup_and_deliver:
+        elif r_type == RequestType.PICKUP_AND_DELIVER:
             if any(
                 v is None for v in (pickup_lat, pickup_lon, drop_off_lat, drop_off_lon)
             ):
                 raise ValueError(
-                    "pickup_latitude, pickup_longitude, dropoff_latitude and dropoff_latitude all must be set for pickup_and_deliver requests"
+                    "pickup_latitude, pickup_longitude, dropoff_latitude and dropoff_latitude all must be set for PICKUP_AND_DELIVER requests"
                 )
             else:
                 if any(v is not None for v in (meetup_lat, meetup_lon)):
                     raise ValueError(
-                        "meetup_latitude and meetup_longitude must not be set for pickup_and_deliver requests"
+                        "meetup_latitude and meetup_longitude must not be set for PICKUP_AND_DELIVER requests"
                     )
 
         # online service check
         else:
             if any(v is None for v in (meetup_lat, meetup_lon)):
                 raise ValueError(
-                    "meetup_latitude and meetup_longitude must be set for online_service requests"
+                    "meetup_latitude and meetup_longitude must be set for ONLINE_SERVICE requests"
                 )
             else:
                 if any(
@@ -118,28 +102,52 @@ class RequestCreate(BaseModel):
                     for v in (pickup_lat, pickup_lon, drop_off_lat, drop_off_lon)
                 ):
                     raise ValueError(
-                        "pickup_latitude, pickup_longitude, dropoff_latitude and dropoff_latitude all must be None for online_service requests"
+                        "pickup_latitude, pickup_longitude, dropoff_latitude and dropoff_latitude all must be None for ONLINE_SERVICE requests"
                     )
 
         return self
 
 
-class RequestOut(BaseModel):
-    id: int
-    request_type: RequestType
+class BaseRequest(BaseModel):
+    id: UUID
+    user_id: UUID
+    type: RequestType
     title: str
-    description: str
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None  # Add this
+    created_at: datetime
+
+    model_config = ConfigDict(
+        from_attributes=True,  # ✅ Allow ORM objects
+        json_encoders={
+            datetime: lambda v: v.isoformat() + "Z",
+            UUID: str,
+        },
+    )
+
+
+class BuyAndDeliverRequest(BaseRequest):
     dropoff_latitude: float
     dropoff_longitude: float
-    pickup_latitude: Optional[float]
-    pickup_longitude: Optional[float]
-    due_date: Optional[date]
-    user_id: int  # Not sure if this is useful
-    username: str
-    created_at: datetime
-    updated_at: Optional[datetime]
 
-    model_config = ConfigDict(from_attributes=True)
+
+class PickupAndDeliverRequest(BaseRequest):
+    pickup_latitude: float
+    pickup_longitude: float
+    dropoff_latitude: float
+    dropoff_longitude: float
+
+
+class OnlineServiceRequest(BaseRequest):
+    meetup_latitude: float
+    meetup_longitude: float
+
+
+CompleteRequest = Union[
+    BuyAndDeliverRequest,
+    PickupAndDeliverRequest,
+    OnlineServiceRequest,
+]
 
 
 class RequestUpdate(BaseModel):
@@ -167,4 +175,20 @@ class RequestUpdate(BaseModel):
         if values.title is not None and not values.title.strip():
             raise ValueError("Title cannot be empty or whitespace.")
 
+        return values
+
+
+class LocationFilter(BaseModel):
+    lat: Optional[float] = Field(None, ge=-90, le=90)
+    lng: Optional[float] = Field(None, ge=-180, le=180)
+    radius_km: Optional[float] = Field(10.0, gt=0)
+
+    @model_validator(mode="after")
+    def validate_all_or_none(cls: type[Self], values: Self):
+        lat, lng, radius = values.lat, values.lng, values.radius_km
+        filled = [lat is not None, lng is not None, radius is not None]
+        if any(filled) and not all(filled):
+            raise ValueError(
+                "All of lat, lng, and radius_km must be provided together."
+            )
         return values

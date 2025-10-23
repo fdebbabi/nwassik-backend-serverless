@@ -9,6 +9,8 @@ from sqlalchemy import (
     Enum,
     ForeignKey,
 )
+from sqlalchemy.orm import relationship
+
 from .base import Base
 from src.schemas.request import RequestType
 from .types import GUID
@@ -21,12 +23,29 @@ class Request(Base):
     id = Column(GUID(), primary_key=True, default=uuid.uuid4)
     user_id = Column(GUID(), nullable=False)
 
-    request_type = Column(Enum(RequestType), nullable=False)
+    type = Column(Enum(RequestType), nullable=False)
     title = Column(String(100), nullable=False)
     description = Column(String(500), nullable=True)
 
     due_date = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=datetime.now)
+
+    # Relationships for easy access
+    buy_and_deliver = relationship(
+        "BuyAndDeliverRequest",
+        uselist=False,
+        cascade="all, delete",
+    )
+    pickup_and_deliver = relationship(
+        "PickupAndDeliverRequest",
+        uselist=False,
+        cascade="all, delete",
+    )
+    online_service = relationship(
+        "OnlineServiceRequest",
+        uselist=False,
+        cascade="all, delete",
+    )
 
 
 class BuyAndDeliverRequest(Base):
@@ -39,6 +58,8 @@ class BuyAndDeliverRequest(Base):
     )
     dropoff_latitude = Column(Float, nullable=False)
     dropoff_longitude = Column(Float, nullable=False)
+
+    request = relationship("Request", back_populates="buy_and_deliver")
 
 
 class PickupAndDeliverRequest(Base):
@@ -54,6 +75,8 @@ class PickupAndDeliverRequest(Base):
     dropoff_latitude = Column(Float, nullable=False)
     dropoff_longitude = Column(Float, nullable=False)
 
+    request = relationship("Request", back_populates="pickup_and_deliver")
+
 
 class OnlineServiceRequest(Base):
     __tablename__ = "online_service_requests"
@@ -65,3 +88,5 @@ class OnlineServiceRequest(Base):
     )
     meetup_latitude = Column(Float, nullable=False)
     meetup_longitude = Column(Float, nullable=False)
+
+    request = relationship("Request", back_populates="online_service")

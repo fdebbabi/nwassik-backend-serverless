@@ -1,6 +1,7 @@
 from typing import TYPE_CHECKING
 
 from src.db.session import get_db_session
+from src.schemas.request import RequestType
 from src.models.request import (
     Request,
     BuyAndDeliverRequest,
@@ -13,11 +14,11 @@ if TYPE_CHECKING:
     from uuid import UUID
 
 
-def insert_request(user_id: "UUID", request: "RequestCreate"):
+def create(user_id: "UUID", request: "RequestCreate"):
     with get_db_session() as db:
         main_request = Request(
             user_id=user_id,
-            request_type=request.request_type,
+            type=request.type,
             title=request.title,
             description=request.description,
             due_date=request.due_date,
@@ -26,7 +27,7 @@ def insert_request(user_id: "UUID", request: "RequestCreate"):
         db.flush()  # main_request.id available
 
         # Create subtype
-        if request.request_type.name == "buy_and_deliver":
+        if request.type == RequestType.BUY_AND_DELIVER:
             db.add(
                 BuyAndDeliverRequest(
                     request_id=main_request.id,
@@ -34,7 +35,7 @@ def insert_request(user_id: "UUID", request: "RequestCreate"):
                     dropoff_longitude=request.dropoff_longitude,
                 )
             )
-        elif request.request_type.name == "pickup_and_deliver":
+        elif request.type == RequestType.PICKUP_AND_DELIVER:
             db.add(
                 PickupAndDeliverRequest(
                     request_id=main_request.id,
@@ -44,7 +45,7 @@ def insert_request(user_id: "UUID", request: "RequestCreate"):
                     dropoff_longitude=request.dropoff_longitude,
                 )
             )
-        else:  # online_service
+        else:  # ONLINE_SERVICE
             db.add(
                 OnlineServiceRequest(
                     request_id=main_request.id,
@@ -64,12 +65,12 @@ def insert_request(user_id: "UUID", request: "RequestCreate"):
 # -------------------------------
 # Read
 # -------------------------------
-def get_request(request_id):
+def get(request_id):
     with get_db_session() as db:
         return db.query(Request).filter(Request.id == request_id).first()
 
 
-def get_requests_batch(limit=30, offset=0):
+def get_batch(limit=30, offset=0):
     with get_db_session() as db:
         return (
             db.query(Request)
@@ -83,7 +84,7 @@ def get_requests_batch(limit=30, offset=0):
 # -------------------------------
 # Update
 # -------------------------------
-def update_request(request_id, data: dict):
+def update(request_id, data: dict):
     with get_db_session() as db:
         req = db.query(Request).filter(Request.id == request_id).first()
         if not req:
@@ -98,7 +99,7 @@ def update_request(request_id, data: dict):
 # -------------------------------
 # Delete
 # -------------------------------
-def delete_request(request_id):
+def delete(request_id):
     with get_db_session() as db:
         req = db.query(Request).filter(Request.id == request_id).first()
         if not req:
