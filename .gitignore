@@ -26,3 +26,7 @@ example.json
 *.log
 
 .local/
+.env
+nwassik*.db
+init_db.py
+test.json
