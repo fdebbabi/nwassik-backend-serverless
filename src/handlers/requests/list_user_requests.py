@@ -1,5 +1,6 @@
 from src.lib.responses import success, error
 from src.repositories.request_repository import get_request_repository
+from uuid import UUID
 
 
 def list_user_requests(event, context):
@@ -7,11 +8,11 @@ def list_user_requests(event, context):
 
     try:
         # NOTE: This is not necessarly the logged in user
-        user_id = event.get("pathParameters", {}).get("user_id")
+        user_id = UUID(event.get("pathParameters", {}).get("user_id"))
         requests = request_repo.get_user_requests(user_id=user_id)
         return success(
             {
-                "requests": requests,
+                "requests": [req.to_dict() for req in requests],
                 "user_id": user_id,
                 "total": len(requests),
             }

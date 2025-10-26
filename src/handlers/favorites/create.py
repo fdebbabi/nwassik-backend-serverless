@@ -8,6 +8,7 @@ from src.repositories.favorite_repository import get_favorite_repository
 def create_favorite(event, _):
     favorite_repo = get_favorite_repository()
 
+    # TODO: Put a limit on favorite items per user maybe 100
     try:
         claims = event.get("requestContext").get("authorizer").get("claims")
         user_id = UUID(claims.get("sub"))
@@ -30,7 +31,6 @@ def create_favorite(event, _):
             {
                 "message": "Favorite created successfully",
                 "favorite_id": str(favorite.id),
-                "request_id": str(favorite.request_id),
             }
         )
 

@@ -13,7 +13,7 @@ def list_user_requests(event, context):
         favorites = favorite_repo.list_user_favorites(user_id=user_id)
         return success(
             {
-                "requests": favorites,
+                "requests": [fav.to_dict() for fav in favorites],
                 "user_id": user_id,
                 "total": len(favorites),
             }

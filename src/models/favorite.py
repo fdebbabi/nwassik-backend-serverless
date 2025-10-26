@@ -22,7 +22,7 @@ class Favorite(Base):
         nullable=False,
     )  # TODO: Enhance this behaviour, to keep maybe only title available so that users are not surprised when the request owner deletes the request. For now it just vanishes
 
-    created_at = Column(
+    created_at: "datetime" = Column(
         DateTime(timezone=True),
         default=datetime.now(timezone.utc),
         nullable=False,
@@ -32,6 +32,7 @@ class Favorite(Base):
         "Request", lazy="select"
     )  # default lazy mode kept, as sometimes we want to check only if the favorite exist. We dont want to load complete request object with it
 
+    # TODO: not sure if we should return requests here, or should we let the client do a GET for how many requests there are might be too much (even though favorites number is limited)
     def to_dict(self):
         return {
             "id": str(self.id),
