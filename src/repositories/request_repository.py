@@ -1,6 +1,6 @@
 from src.repositories.interfaces import RequestRepositoryInterface
 from src.db.session import get_db_session
-from src.schemas.request import RequestType
+from src.schemas.request import RequestType, RequestUpdate
 from src.models.request import (
     Request,
     BuyAndDeliverRequest,
@@ -155,14 +155,16 @@ class RequestRepository(RequestRepositoryInterface):
         except Exception as e:
             raise Exception(f"Error listing requests: {str(e)}")
 
-    def update(self, request_id, data: dict) -> Request:
+    def update(self, request_id, request_update: RequestUpdate) -> Request:
         with get_db_session() as db:
-            req = db.query(Request).filter(Request.id == request_id).first()
-            if not req:
+            # Apply updates
+            request = db.query(Request).filter(Request.id == request_id).first()
+            if not request:
                 raise Exception("Workflow should not be happening")
-            for k, v in data.items():
-                setattr(req, k, v)
-            return req
+
+            for attr, value in request_update.model_dump(exclude_unset=True).items():
+                setattr(request, attr, value)
+            return request
 
     def delete(self, request_id) -> bool:
         with get_db_session() as db:

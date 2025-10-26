@@ -151,31 +151,21 @@ CompleteRequest = Union[
 
 
 class RequestUpdate(BaseModel):
-    title: Optional[str] = Field(None, max_length=255)
-    description: Optional[str] = Field(None)
-
-    # dropoff_latitude: Optional[float] = Field(None, ge=-90, le=90)
-    # dropoff_longitude: Optional[float] = Field(None, ge=-180, le=180)
-    # pickup_latitude: Optional[float] = Field(None, ge=-90, le=90)
-    # pickup_longitude: Optional[float] = Field(None, ge=-180, le=180)
-    # due_date: Optional[date] = None
+    title: Optional[str] = Field(None, max_length=100)
+    description: Optional[str] = Field(None, max_length=500)
 
     @model_validator(mode="after")
-    def check_setup_and_filled(cls, values):
+    def check_setup_and_filled(self, values):
         """
         Ensure at least one of title or description is provided.
         """
-        title, description = values.title, values.description
 
-        if title is None and description is None:
+        if self.title is None and self.description is None:
             raise ValueError(
                 "At least one of 'title' or 'description' must be provided."
             )
 
-        if values.title is not None and not values.title.strip():
-            raise ValueError("Title cannot be empty or whitespace.")
-
-        return values
+        return self
 
 
 class LocationFilter(BaseModel):
