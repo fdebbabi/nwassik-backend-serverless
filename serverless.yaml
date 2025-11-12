@@ -8,7 +8,7 @@ plugins:
   - serverless-python-requirements
 
 package:
-  patterns: # Let's keep it minimalistic, maybe I will change it later
+  patterns: # import the bare minimum (minimalistic)
     - "src/"
     - ".gitignore"
     - "README.md"
@@ -46,14 +46,6 @@ provider:
     STAGE: ${sls:stage}
     DYNAMODB_TABLE_REQUESTS: ${self:custom.dynamodbTables.RequestsTableName}
     DYNAMODB_TABLE_FAVORITES: ${self:custom.dynamodbTables.FavoritesTableName}
-    # COGNITO_USER_POOL_ID:
-    #   Ref: CognitoUserPool
-    # COGNITO_USER_POOL_CLIENT_ID:
-    #   Ref: CognitoUserPoolClient
-
-  # TODO: Upgrade all http with httpApi for single place CORS with API Gateway V2
-  # httpApi:
-  #   cors: true # ← Central CORS for ALL endpoints
   iam:
     role:
       statements:
@@ -93,10 +85,6 @@ functions:
           path: /requests
           method: post
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   authorizerId:
-          #     Ref: ApiGatewayCognitoAuthorizer
 
   getRequest:
     handler: src/handlers/requests/get.get_request
@@ -113,10 +101,6 @@ functions:
           path: /requests/{request_id}
           method: delete
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   authorizerId:
-          #     Ref: ApiGatewayCognitoAuthorizer
 
   listMyRequests:
     handler: src/handlers/requests/mine.list_my_requests
@@ -125,10 +109,6 @@ functions:
           path: /requests/mine
           method: get
           cors: true
-          # authorizer:
-          #   type: COGNITO_USER_POOLS
-          #   authorizerId:
-          #     Ref: ApiGatewayCognitoAuthorizer
 
 # -----------------------------------------------------------------------------
 # RESOURCES
@@ -213,53 +193,3 @@ resources:
               ProjectionType: INCLUDE
               NonKeyAttributes:
                 - user_id
-
-    # # --- Cognito user pool -----------------------
-    # CognitoUserPool:
-    #   Type: AWS::Cognito::UserPool
-    #   Properties:
-    #     UserPoolName: ${self:service}-cognito-userpool-${sls:stage}
-    #     AutoVerifiedAttributes:
-    #       - email
-    #     # TODO: Product decision maybe we should add also phone number as a username
-    #     UsernameAttributes:
-    #       - email
-    #     Policies:
-    #       # FIXME: Policy too permissive
-    #       PasswordPolicy:
-    #         MinimumLength: 5
-    #         RequireLowercase: false
-    #         RequireNumbers: false
-    #         RequireSymbols: false
-    #         RequireUppercase: false
-
-    # # --- Cognito user pool client-----------------------
-    # CognitoUserPoolClient:
-    #   Type: AWS::Cognito::UserPoolClient
-    #   Properties:
-    #     ClientName: ${self:service}-cognito-userpool-client-${sls:stage}
-    #     UserPoolId:
-    #       Ref: CognitoUserPool
-    #     GenerateSecret: false
-    #     ExplicitAuthFlows:
-    #       - ALLOW_USER_PASSWORD_AUTH
-    #       - ALLOW_REFRESH_TOKEN_AUTH
-    #       - ALLOW_USER_SRP_AUTH
-
-    #     # TODO: Probably should add Google and Facebook as the only Social Providers in addition to cognito
-    #     SupportedIdentityProviders:
-    #       - COGNITO
-
-    # # --- API Gateway authorizer (REST API v1) ----
-    # ApiGatewayCognitoAuthorizer:
-    #   Type: AWS::ApiGateway::Authorizer
-    #   Properties:
-    #     Name: ${self:service}-cognito-authorizer-${sls:stage}
-    #     Type: COGNITO_USER_POOLS
-    #     RestApiId:
-    #       Ref: ApiGatewayRestApi
-    #     IdentitySource: method.request.header.Authorization # This is the Authorization header
-    #     ProviderARNs:
-    #       - Fn::GetAtt:
-    #           - CognitoUserPool
-    #           - Arn
