@@ -5,20 +5,21 @@ service: nwassik-store
 frameworkVersion: "4"
 
 plugins:
+  # NOTE: By default, Serverless doesn’t know how to bundle Python packages
   - serverless-python-requirements
 
 package:
   patterns: # import the bare minimum (minimalistic)
     - "src/"
-    - ".gitignore"
     - "README.md"
     - "requirements.txt"
     - "serverless.yaml"
+    - "!.gitignore"
     - "!venv/**" # ← Explicitly exclude venv
     - "!node_modules/**" # ← Explicitly exclude node_modules
     - "!__pycache__/**" # ← Explicitly exclude pycache
-
 custom:
+  # NOTE: exact keyword needed by "serverless-python-requirements" plugin
   pythonRequirements:
     usePoetry: false
     dockerizePip: true # <<--- build wheels in Docker (required for compiled deps as I am on MacOS)
@@ -40,7 +41,17 @@ provider:
   region: eu-west-3
   stage: NotToUseStage
   environment:
-    STAGE: ${sls:stage}
+    STAGE: ${sls:stage} # used in Python code to detect Lambda stage
+    DATABASE_SECRET_NAME: "rds!nwassik-${sls:stage}-app-db-secret" # Secrets Manager secret
+    MAX_USER_CREATED_REQUESTS: 20
+    MAX_USER_CREATED_FAVORITES: 100
+  iam:
+    role:
+      statements:
+        - Effect: Allow
+          Action:
+            - secretsmanager:GetSecretValue
+          Resource: arn:aws:secretsmanager:eu-west-3:689688455606:secret:rds!nwassik-${sls:stage}-app-db-secret
 
 functions:
   # -----------------------------------------------------------------------------
@@ -81,6 +92,14 @@ functions:
           method: get
           cors: true
 
+  listUserRequests:
+    handler: src/handlers/requests/list_user_requests.list_user_requests
+    events:
+      - http:
+          path: /users/{user_id}/requests
+          method: get
+          cors: true
+
   deleteRequest:
     handler: src/handlers/requests/delete.delete_request
     events:
@@ -88,8 +107,41 @@ functions:
           path: /requests/{request_id}
           method: delete
           cors: true
-# TODO: Add update request
 
+  updateRequest:
+    handler: src/handlers/requests/update.update_request
+    events:
+      - http:
+          path: /requests/{request_id}
+          method: patch
+          cors: true
+
+  # -----------------------------------------------------------------------------
+  # FAVORITES
+  # -----------------------------------------------------------------------------
+  createFavorite:
+    handler: src/handlers/favorites/create.create_favorite
+    events:
+      - http:
+          path: /favorites
+          method: post
+          cors: true
+
+  deleteFavorite:
+    handler: src/handlers/favorites/delete.delete_request
+    events:
+      - http:
+          path: /favorites/{favorite_id}
+          method: delete
+          cors: true
+
+  listUserFavorites:
+    handler: src/handlers/favorites/list.list_user_favorites
+    events:
+      - http:
+          path: /favorites
+          method: get
+          cors: true
 # -----------------------------------------------------------------------------
 # RESOURCES
 # -----------------------------------------------------------------------------

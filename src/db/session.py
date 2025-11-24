@@ -11,6 +11,7 @@ engine = create_engine(
 SessionLocal = sessionmaker(bind=engine, expire_on_commit=False)
 
 
+# FIXME: Need to add RDS Proxy or at least handle connection errors in case secret is rotated
 @contextmanager
 def get_db_session():
     session = SessionLocal()

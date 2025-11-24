@@ -1,0 +1,8 @@
+[tool.ruff]
+select = ["ALL"]
+line-length = 88
+target-version = "py311"
+show-fixes = true
+
+[tool.ruff.isort]
+known-first-party = ["your_project"]

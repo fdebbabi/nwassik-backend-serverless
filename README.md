@@ -21,14 +21,14 @@
       - Users specify from where items should be picked, and to where should be delivered
     - Online Service
       - Users specify what online service they need (Netflix, plane ticket,..) and meetup location for transaction
-  - A due date can also be specified informing when the request should be completed.
+  - A due date can also be specified indicating the final deadline for completing the request (Possible for all kind of requests)
 
 - **Viewing Requests:**
   - Providers browse public listings based on filters (request type, location, due date, ..)
 
 - **Providers Respond:**
 
-  - Other users (providers) see public requests.
+  - Providers see public requests.
   - They can offer to fulfill a posted request by sending a chat message
   - Requester and Provider discuss details privately
 
@@ -48,12 +48,19 @@
 - **Trust, Safety & Reputation:** Users can report inappropriate or fraudulent requests/offers.  
 - **Ratings & Completion Feedback:** Allow requesters and providers to rate each other, even if payment occurs offline.  
 - **Verification Levels (Optional Future):** Users can verify their phone, email, or ID to increase trust, with a blue mark for verified users.  
-- **Notification System:** Notify users when a new request is posted and allow subscription to filters (service type, location, date, etc.).  
+- **Notification System:** Notify users when a new request is posted and allow subscription to filters (service type, location, date, etc.)
+  - We can create an RDS trigger that sends data directly to SQS queue, and from there handle it.
+  - Otherwise, we can do polling on the database with filters (Lambda + EventBridge for scheduled polling)
+  - Publish notifications via SNS (email/SMS)
+  - We can put moderation detection with DynamoDB streams + Amazon Comprehend + Amazon Rekognition
 - **Chat:** Built-in messaging between requesters and providers.  
 - **Feedback:** Users can provide feedback with text and image for me  
 - **Current Offers Page:** Separate page displaying all current offers.  
-- **Request Images:** Allow users to upload a maximum of two images per request.  
+- **Request Images:** Allow users to upload a maximum of two images per request
+  - Allows secure client uploads directly to S3 without exposing credentials (Amazon S3 + Pre-signed URLs, check if I upload them directly)
+  - Trigger Lambda on image upload for: resizing, virus scanning, or thumbnail generation (Amazon S3 + Lambda)
 - **Money Exchange Officer:** Add a trusted fund handler for secure money exchange and transactions.  
+- **Money Exchange Security:** Add users payment via edinar or something to garantee payment
 
 ## Technical Architecture
 
