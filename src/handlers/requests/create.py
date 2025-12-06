@@ -3,7 +3,7 @@
 import json
 from uuid import UUID
 
-from config import API_VERSION, BASE_DOMAIN, MAX_USER_CREATED_REQUESTS
+from src.config import BASE_DOMAIN, MAX_USER_CREATED_REQUESTS
 from src.lib.responses import error, success
 from src.repositories.request_repository import get_request_repository
 from src.schemas.request import RequestCreate
@@ -41,7 +41,7 @@ def create_request(event, _):  # noqa
                 "request_id": str(request.id),
             },
             status_code=201,
-            extra_headers={"Location": f"{BASE_DOMAIN}/{API_VERSION}/requests/{request.id}"},
+            extra_headers={"Location": f"{BASE_DOMAIN}/requests/{request.id}"},
         )
     except Exception as e:
         return error(str(e))

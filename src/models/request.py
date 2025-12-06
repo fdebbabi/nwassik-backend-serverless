@@ -1,4 +1,4 @@
-"""Favorite SQLAlchemy Model definition."""
+"""Request SQLAlchemy Model definition."""
 
 import uuid
 from datetime import datetime
@@ -35,7 +35,7 @@ class Request(Base):
     description = Column(String(500), nullable=True)
 
     due_date: "datetime" = Column(DateTime(timezone=True), nullable=True)
-    created_at: "datetime" = Column(DateTime(timezone=True), default=datetime.now)
+    created_at: "datetime" = Column(DateTime(timezone=True), default=lambda: datetime.now(datetime.UTC))
 
     # Relationships for easy access
     buy_and_deliver: "BuyAndDeliverRequest" = relationship(

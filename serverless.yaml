@@ -5,7 +5,7 @@ service: nwassik-store
 frameworkVersion: "4"
 
 plugins:
-  # NOTE: By default, Serverless doesn’t know how to bundle Python packages
+  # NOTE: By default, Serverless doesn't know how to bundle Python packages
   - serverless-python-requirements
 
 package:
@@ -19,6 +19,15 @@ package:
     - "!node_modules/**" # ← Explicitly exclude node_modules
     - "!__pycache__/**" # ← Explicitly exclude pycache
 custom:
+  stages:
+    prod:
+      baseDomain: https://api.nwassik.com # Required, otherwise make follow below format
+    # Optional stages (listed for easy reference: All other stages https://api-{stage}.nwassik.com )
+    dev:
+      baseDomain: https://api-dev.nwassik.com
+    staging:
+      baseDomain: https://api-staging.nwassik.com
+
   # NOTE: exact keyword needed by "serverless-python-requirements" plugin
   pythonRequirements:
     usePoetry: false
@@ -35,13 +44,26 @@ custom:
         --upgrade \
         -r requirements.txt
 
+  # Centralized CORS configuration
+  corsConfig: &corsConfig
+    origin:
+      - http://localhost:8080
+      - https://nwassik.com
+      - https://www.nwassik.com
+    headers:
+      - Content-Type
+      - Authorization
+    allowCredentials: true
+
 provider:
   name: aws
   runtime: python3.11
   region: eu-west-3
   stage: NotToUseStage
   environment:
+    RUN_ENV: cloud # Running in AWS Lambda (cloud) vs local
     STAGE: ${sls:stage} # used in Python code to detect Lambda stage
+    BASE_DOMAIN: ${self:custom.stages.${sls:stage}.baseDomain, 'https://api-${sls:stage}.nwassik.com'} # Stage-specific API domain
     DATABASE_SECRET_NAME: "rds!nwassik-${sls:stage}-app-db-secret" # Secrets Manager secret
     MAX_USER_CREATED_REQUESTS: 20
     MAX_USER_CREATED_FAVORITES: 100
@@ -67,14 +89,13 @@ functions:
   # -----------------------------------------------------------------------------
   # REQUESTS
   # -----------------------------------------------------------------------------
-  # FIXME: CORS is enabled from everywhere, I need to make it explicit/specific or remove it
   listRequests:
     handler: src/handlers/requests/list.list_requests
     events:
       - http:
           path: /requests
           method: get
-          cors: true
+          cors: *corsConfig
 
   createRequest:
     handler: src/handlers/requests/create.create_request
@@ -82,7 +103,7 @@ functions:
       - http:
           path: /requests
           method: post
-          cors: true
+          cors: *corsConfig
 
   getRequest:
     handler: src/handlers/requests/get.get_request
@@ -90,7 +111,7 @@ functions:
       - http:
           path: /requests/{request_id}
           method: get
-          cors: true
+          cors: *corsConfig
 
   listUserRequests:
     handler: src/handlers/requests/list_user_requests.list_user_requests
@@ -98,7 +119,7 @@ functions:
       - http:
           path: /users/{user_id}/requests
           method: get
-          cors: true
+          cors: *corsConfig
 
   deleteRequest:
     handler: src/handlers/requests/delete.delete_request
@@ -106,7 +127,7 @@ functions:
       - http:
           path: /requests/{request_id}
           method: delete
-          cors: true
+          cors: *corsConfig
 
   updateRequest:
     handler: src/handlers/requests/update.update_request
@@ -114,7 +135,7 @@ functions:
       - http:
           path: /requests/{request_id}
           method: patch
-          cors: true
+          cors: *corsConfig
 
   # -----------------------------------------------------------------------------
   # FAVORITES
@@ -125,7 +146,7 @@ functions:
       - http:
           path: /favorites
           method: post
-          cors: true
+          cors: *corsConfig
 
   deleteFavorite:
     handler: src/handlers/favorites/delete.delete_request
@@ -133,7 +154,7 @@ functions:
       - http:
           path: /favorites/{favorite_id}
           method: delete
-          cors: true
+          cors: *corsConfig
 
   listUserFavorites:
     handler: src/handlers/favorites/list.list_user_favorites
@@ -141,7 +162,7 @@ functions:
       - http:
           path: /favorites
           method: get
-          cors: true
+          cors: *corsConfig
 # -----------------------------------------------------------------------------
 # RESOURCES
 # -----------------------------------------------------------------------------

@@ -24,7 +24,7 @@ def update_request(event, _):  # noqa
             return error("Not authorized to update this request", 403)
 
         body = json.loads(event.get("body", "{}"))
-        request_update: RequestUpdate = RequestUpdate(body)
+        request_update: RequestUpdate = RequestUpdate.model_validate(body)
 
         request_repo.update(request_id=request_id, request_update=request_update)
 

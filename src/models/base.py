@@ -4,4 +4,4 @@ from sqlalchemy.orm import DeclarativeBase
 
 
 class Base(DeclarativeBase):
-    """SQLALchemy base classe."""
+    """SQLAlchemy base class."""
