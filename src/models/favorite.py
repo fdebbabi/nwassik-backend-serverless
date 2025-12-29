@@ -21,7 +21,7 @@ class Favorite(Base):
     user_id = Column(GUID(), nullable=False)
     request_id = Column(
         GUID(),
-        ForeignKey("requests.id", ondelete="CASCADE"),
+        ForeignKey("requests.id", ondelete="CASCADE"),  # NOTE: Not enforced by DSQL; handled by SQLAlchemy cascade
         nullable=False,
     )  # TODO: Enhance this behaviour, to keep maybe only title available so that users are not
     # surprised when the request owner deletes the request. For now it just vanishes
@@ -34,7 +34,7 @@ class Favorite(Base):
 
     # default lazy mode kept, as sometimes we want to check only if the favorite exist.
     # We dont want to load complete request object with it
-    request = relationship("Request", lazy="select")
+    request = relationship("Request", back_populates="favorites", lazy="select")
 
     # TODO: not sure if we should return requests here, or should we let the client do a GET for
     # how many requests there are might be too much (even though favorites number is limited)

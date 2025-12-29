@@ -40,6 +40,8 @@ class Request(Base):
     )
 
     # Relationships for easy access
+    # NOTE: SQLAlchemy cascade used in place of DB-level CASCADE due to Aurora DSQL
+    # (DSQL doesn't enforce FK constraints, so deletes must be handled at app level)
     buy_and_deliver: "BuyAndDeliverRequest" = relationship(
         "BuyAndDeliverRequest",
         uselist=False,
@@ -57,6 +59,11 @@ class Request(Base):
         uselist=False,
         cascade="all, delete",
         lazy="joined",
+    )
+    favorites = relationship(
+        "Favorite",
+        back_populates="request",
+        cascade="all, delete",
     )
 
     def to_dict(self) -> dict[str, str]:
