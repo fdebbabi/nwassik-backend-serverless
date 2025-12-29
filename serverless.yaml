@@ -27,13 +27,18 @@ custom:
     - prod
 
   stages:
-    prod:
-      baseDomain: https://api.nwassik.com # Required, otherwise make follow below format
-    # Optional stages (listed for easy reference: All other stages https://api-{stage}.nwassik.com )
     dev:
       baseDomain: https://api-dev.nwassik.com
+      cognitoUserPoolId: ${env:COGNITO_USER_POOL_ID}
+      cognitoAppClientId: ${env:COGNITO_APP_CLIENT_ID}
     staging:
       baseDomain: https://api-staging.nwassik.com
+      cognitoUserPoolId: ${env:COGNITO_USER_POOL_ID}
+      cognitoAppClientId: ${env:COGNITO_APP_CLIENT_ID}
+    prod:
+      baseDomain: https://api.nwassik.com
+      cognitoUserPoolId: ${env:COGNITO_USER_POOL_ID}
+      cognitoAppClientId: ${env:COGNITO_APP_CLIENT_ID}
 
   # NOTE: exact keyword needed by "serverless-python-requirements" plugin
   pythonRequirements:
@@ -50,17 +55,6 @@ custom:
         --only-binary=:all: \
         --upgrade \
         -r requirements.txt
-
-  # Centralized CORS configuration (commented out for initial deployment)
-  # corsConfig: &corsConfig
-  #   origin:
-  #     - http://localhost:8080
-  #     - https://nwassik.com
-  #     - https://www.nwassik.com
-  #   headers:
-  #     - Content-Type
-  #     - Authorization
-  #   allowCredentials: true
 
 provider:
   name: aws
@@ -86,14 +80,38 @@ provider:
             - dsql:DbConnect
           Resource: arn:aws:dsql:eu-west-3:689688455606:cluster/*
 
+  # NOTE: Using HTTP API (not REST API) because it's:
+  #   ✅ 70% cheaper ($1/M vs $3.50/M requests)
+  #   ✅ 60% faster (lower latency)
+  #   ✅ Native and simple JWT authentication support
+  #   ✅ Built-in CORS support
+  #   ✅ Simple throttling config (burstLimit + rateLimit)
+  #   ✅ Supports OpenAPI documentation
+  #   ❌ Does NOT support request validation at gateway level
+  #      (REST API can validate before Lambda runs; HTTP API cannot)
+  #      This means Lambdas may execute for invalid requests - validation must be done in code
+  httpApi:
+    # TODO: Add CORS configuration when connecting frontend
+    authorizers:
+      cognitoAuthorizer:
+        type: jwt
+        identitySource: $request.header.Authorization
+        issuerUrl: https://cognito-idp.${aws:region}.amazonaws.com/${self:custom.stages.${sls:stage}.cognitoUserPoolId}
+        audience:
+          - ${self:custom.stages.${sls:stage}.cognitoAppClientId}
+    # Default throttling settings (can be overridden per route)
+    throttle:
+      burstLimit: 100  # Maximum concurrent requests
+      rateLimit: 50    # Requests per second
+
 functions:
   # -----------------------------------------------------------------------------
-  # HEALTH CHECK
+  # HEALTH CHECK (Public - no authentication)
   # -----------------------------------------------------------------------------
   healthCheck:
     handler: src/handlers/health/check.health_check
     events:
-      - http:
+      - httpApi:
           path: /health
           method: get
 
@@ -103,77 +121,82 @@ functions:
   listRequests:
     handler: src/handlers/requests/list.list_requests
     events:
-      - http:
+      - httpApi:
           path: /requests
           method: get
-          # cors: *corsConfig
 
   createRequest:
     handler: src/handlers/requests/create.create_request
     events:
-      - http:
+      - httpApi:
           path: /requests
           method: post
-          # cors: *corsConfig
+          authorizer:
+            name: cognitoAuthorizer
 
   getRequest:
     handler: src/handlers/requests/get.get_request
     events:
-      - http:
+      - httpApi:
           path: /requests/{request_id}
           method: get
-          # cors: *corsConfig
 
   listUserRequests:
     handler: src/handlers/requests/list_user_requests.list_user_requests
     events:
-      - http:
+      - httpApi:
           path: /users/{user_id}/requests
           method: get
-          # cors: *corsConfig
+          authorizer:
+            name: cognitoAuthorizer
 
   deleteRequest:
     handler: src/handlers/requests/delete.delete_request
     events:
-      - http:
+      - httpApi:
           path: /requests/{request_id}
           method: delete
-          # cors: *corsConfig
+          authorizer:
+            name: cognitoAuthorizer
 
   updateRequest:
     handler: src/handlers/requests/update.update_request
     events:
-      - http:
+      - httpApi:
           path: /requests/{request_id}
           method: patch
-          # cors: *corsConfig
+          authorizer:
+            name: cognitoAuthorizer
 
   # -----------------------------------------------------------------------------
-  # FAVORITES
+  # FAVORITES (All require authentication)
   # -----------------------------------------------------------------------------
   createFavorite:
     handler: src/handlers/favorites/create.create_favorite
     events:
-      - http:
+      - httpApi:
           path: /favorites
           method: post
-          # cors: *corsConfig
+          authorizer:
+            name: cognitoAuthorizer
 
   deleteFavorite:
     handler: src/handlers/favorites/delete.delete_favorite
     events:
-      - http:
+      - httpApi:
           path: /favorites/{favorite_id}
           method: delete
-          # cors: *corsConfig
+          authorizer:
+            name: cognitoAuthorizer
 
   listUserFavorites:
     handler: src/handlers/favorites/list.list_user_favorites
     events:
-      - http:
+      - httpApi:
           path: /favorites
           method: get
-          # cors: *corsConfig
+          authorizer:
+            name: cognitoAuthorizer
 # -----------------------------------------------------------------------------
 # RESOURCES
 # -----------------------------------------------------------------------------

@@ -1,6 +1,6 @@
 {
   "scripts": {
-    "deploy:dev": "NODE_NO_WARNINGS=1 serverless deploy --stage dev",
+    "deploy:dev": "NODE_NO_WARNINGS=1 COGNITO_USER_POOL_ID=eu-west-3_cxy6WQktl COGNITO_APP_CLIENT_ID=3gu5m6gb2sicvrvgdkbp3uppsv serverless deploy --stage dev",
     "deploy:staging": "NODE_NO_WARNINGS=1 serverless deploy --stage staging",
     "deploy:prod": "NODE_NO_WARNINGS=1 serverless deploy --stage prod",
     "remove:dev": "NODE_NO_WARNINGS=1 serverless remove --stage dev",
