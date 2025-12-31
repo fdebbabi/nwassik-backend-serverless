@@ -1,4 +1,4 @@
-# Nwassik Store - Serverless Backend
+# Nwassik - Serverless Backend
 
 ## 📋 Table of Contents
 
@@ -10,7 +10,7 @@
 
 ## 🎯 Project Overview
 
-**Nwassik Store** is a reverse marketplace platform that connects people who need products or services (Requesters) with people who can fulfill those needs (Providers). The platform focuses on enabling cross-border transactions, particularly between Tunisia and France, where users can request items for purchase and delivery from abroad, items to be picked from one place and delivered to another, or purchasing online services that are not available locally.
+**Nwassik** is a reverse marketplace platform that connects people who need products or services (Requesters) with people who can fulfill those needs (Providers). The platform focuses on enabling cross-border transactions, particularly between Tunisia and France, where users can request items for purchase and delivery from abroad, items to be picked from one place and delivered to another, or purchasing online services that are not available locally.
 
 ### The Main Problem We Solve
 

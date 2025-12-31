@@ -103,10 +103,10 @@ serverless deploy --stage dev
 
 # Expected output:
 # Service Information
-# service: nwassik-store
+# service: nwassik
 # stage: dev
 # region: eu-west-3
-# stack: nwassik-store-dev
+# stack: nwassik-dev
 # endpoints:
 #   GET - https://api-dev.nwassik.com/health
 #   GET - https://api-dev.nwassik.com/requests

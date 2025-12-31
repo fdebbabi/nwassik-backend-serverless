@@ -1,6 +1,6 @@
 # serverless.yml
 
-service: nwassik-store
+service: nwassik
 
 frameworkVersion: "4"
 
@@ -93,6 +93,7 @@ provider:
   #   ❌ Global throttling only (not per-user)
   #      Per-user rate limiting will be implemented in Lambda with Redis/DynamoDB later
   httpApi:
+    name: nwassik-${sls:stage}
     # TODO: Add CORS configuration when connecting frontend
     authorizers:
       cognitoAuthorizer:
