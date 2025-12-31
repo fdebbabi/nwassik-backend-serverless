@@ -46,13 +46,14 @@ custom:
     dockerizePip: true # <<--- build wheels in Docker (required for compiled deps as I am on MacOS)
     useStaticCache: false # ← Disable cache
 
+    # Fail if no wheel! do not compile
     dockerBuildCmd: |
       pip install \
         --platform manylinux2014_x86_64 \
         --target /var/task \
         --implementation cp \
         --python-version 3.11 \
-        --only-binary=:all: \
+        --only-binary=:all: \ 
         --upgrade \
         -r requirements.txt
 
