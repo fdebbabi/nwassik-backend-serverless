@@ -4,10 +4,6 @@ service: nwassik
 
 frameworkVersion: "4"
 
-plugins:
-  # NOTE: By default, Serverless doesn't know how to bundle Python packages
-  - serverless-python-requirements
-
 package:
   patterns: # import the bare minimum (minimalistic)
     - "src/"
@@ -40,7 +36,9 @@ custom:
       cognitoUserPoolId: ${env:COGNITO_USER_POOL_ID}
       cognitoAppClientId: ${env:COGNITO_APP_CLIENT_ID}
 
-  # NOTE: exact keyword needed by "serverless-python-requirements" plugin
+  # NOTE: By default, Serverless now know how to bundle Python packages
+  #       so no need to install python plugin
+  # NOTE: exact keyword needed by "serverless-python-requirements" plugin already installed
   pythonRequirements:
     usePoetry: false
     dockerizePip: true # <<--- build wheels in Docker (required for compiled deps as I am on MacOS)
@@ -121,14 +119,14 @@ functions:
     handler: src/handlers/requests/list.list_requests
     events:
       - httpApi:
-          path: /requests
+          path: /v0/requests
           method: get
 
   createRequest:
     handler: src/handlers/requests/create.create_request
     events:
       - httpApi:
-          path: /requests
+          path: /v0/requests
           method: post
           authorizer:
             name: cognitoAuthorizer
@@ -137,14 +135,14 @@ functions:
     handler: src/handlers/requests/get.get_request
     events:
       - httpApi:
-          path: /requests/{request_id}
+          path: /v0/requests/{request_id}
           method: get
 
   listUserRequests:
     handler: src/handlers/requests/list_user_requests.list_user_requests
     events:
       - httpApi:
-          path: /users/{user_id}/requests
+          path: /v0/users/{user_id}/requests
           method: get
           authorizer:
             name: cognitoAuthorizer
@@ -153,7 +151,7 @@ functions:
     handler: src/handlers/requests/delete.delete_request
     events:
       - httpApi:
-          path: /requests/{request_id}
+          path: /v0/requests/{request_id}
           method: delete
           authorizer:
             name: cognitoAuthorizer
@@ -162,7 +160,7 @@ functions:
     handler: src/handlers/requests/update.update_request
     events:
       - httpApi:
-          path: /requests/{request_id}
+          path: /v0/requests/{request_id}
           method: patch
           authorizer:
             name: cognitoAuthorizer
@@ -174,7 +172,7 @@ functions:
     handler: src/handlers/favorites/create.create_favorite
     events:
       - httpApi:
-          path: /favorites
+          path: /v0/favorites
           method: post
           authorizer:
             name: cognitoAuthorizer
@@ -183,7 +181,7 @@ functions:
     handler: src/handlers/favorites/delete.delete_favorite
     events:
       - httpApi:
-          path: /favorites/{favorite_id}
+          path: /v0/favorites/{favorite_id}
           method: delete
           authorizer:
             name: cognitoAuthorizer
@@ -192,7 +190,7 @@ functions:
     handler: src/handlers/favorites/list.list_user_favorites
     events:
       - httpApi:
-          path: /favorites
+          path: /v0/favorites
           method: get
           authorizer:
             name: cognitoAuthorizer
