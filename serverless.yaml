@@ -1,4 +1,5 @@
 # serverless.yml
+# Testing deployment speed with Lambda Layers
 
 service: nwassik
 
@@ -42,7 +43,8 @@ custom:
   pythonRequirements:
     usePoetry: false
     dockerizePip: true # <<--- build wheels in Docker (required for compiled deps as I am on MacOS)
-    useStaticCache: false # ← Disable cache
+    useStaticCache: true # ← Enable cache to prevent unnecessary layer rebuilds
+    layer: true # ← Package dependencies as a Lambda Layer (shared across all functions)
 
     # Fail if no wheel! do not compile
     dockerBuildCmd: |
@@ -51,7 +53,7 @@ custom:
         --target /var/task \
         --implementation cp \
         --python-version 3.11 \
-        --only-binary=:all: \ 
+        --only-binary=:all: \
         --upgrade \
         -r requirements.txt
 
@@ -60,6 +62,9 @@ provider:
   runtime: python3.11
   region: eu-west-3
   stage: NotToUseStage # NOTE: this is kept as a safeguard to force explicit stage selection as serverless framework defaults to dev...
+  memorySize: 256 # MB (currently using ~157MB, reduced from default 1024MB)
+  layers:
+    - Ref: PythonRequirementsLambdaLayer # Reference the layer created by pythonRequirements.layer:true
   environment:
     RUN_ENV: cloud # Running in AWS Lambda (cloud) vs local
     STAGE: ${sls:stage} # used in Python code to detect Lambda stage
@@ -68,16 +73,9 @@ provider:
     MAX_USER_CREATED_REQUESTS: 20
     MAX_USER_CREATED_FAVORITES: 100
   iam:
-    role:
-      statements:
-        - Effect: Allow
-          Action:
-            - secretsmanager:GetSecretValue
-          Resource: arn:aws:secretsmanager:eu-west-3:689688455606:secret:nwassik/${sls:stage}/app-db-secret-*
-        - Effect: Allow
-          Action:
-            - dsql:DbConnect
-          Resource: arn:aws:dsql:eu-west-3:689688455606:cluster/*
+    # Use the IAM role created by Terraform (nwassik-infra/iam.tf)
+    # This role includes permissions for Secrets Manager and DSQL access
+    role: arn:aws:iam::${aws:accountId}:role/nwassik-${sls:stage}-lambda-app-role
 
   # NOTE: Using HTTP API (not REST API) because it's:
   #   ✅ 70% cheaper ($1/M vs $3.50/M requests)
@@ -106,7 +104,7 @@ functions:
   # HEALTH CHECK (Public - no authentication)
   # -----------------------------------------------------------------------------
   healthCheck:
-    handler: src/handlers/health/check.health_check
+    handler: src.handlers.health.check.health_check
     events:
       - httpApi:
           path: /health
@@ -116,14 +114,14 @@ functions:
   # REQUESTS
   # -----------------------------------------------------------------------------
   listRequests:
-    handler: src/handlers/requests/list.list_requests
+    handler: src.handlers.requests.list.list_requests
     events:
       - httpApi:
           path: /v0/requests
           method: get
 
   createRequest:
-    handler: src/handlers/requests/create.create_request
+    handler: src.handlers.requests.create.create_request
     events:
       - httpApi:
           path: /v0/requests
@@ -132,14 +130,14 @@ functions:
             name: cognitoAuthorizer
 
   getRequest:
-    handler: src/handlers/requests/get.get_request
+    handler: src.handlers.requests.get.get_request
     events:
       - httpApi:
           path: /v0/requests/{request_id}
           method: get
 
   listUserRequests:
-    handler: src/handlers/requests/list_user_requests.list_user_requests
+    handler: src.handlers.requests.list_user_requests.list_user_requests
     events:
       - httpApi:
           path: /v0/users/{user_id}/requests
@@ -148,7 +146,7 @@ functions:
             name: cognitoAuthorizer
 
   deleteRequest:
-    handler: src/handlers/requests/delete.delete_request
+    handler: src.handlers.requests.delete.delete_request
     events:
       - httpApi:
           path: /v0/requests/{request_id}
@@ -157,7 +155,7 @@ functions:
             name: cognitoAuthorizer
 
   updateRequest:
-    handler: src/handlers/requests/update.update_request
+    handler: src.handlers.requests.update.update_request
     events:
       - httpApi:
           path: /v0/requests/{request_id}
@@ -169,7 +167,7 @@ functions:
   # FAVORITES (All require authentication)
   # -----------------------------------------------------------------------------
   createFavorite:
-    handler: src/handlers/favorites/create.create_favorite
+    handler: src.handlers.favorites.create.create_favorite
     events:
       - httpApi:
           path: /v0/favorites
@@ -178,7 +176,7 @@ functions:
             name: cognitoAuthorizer
 
   deleteFavorite:
-    handler: src/handlers/favorites/delete.delete_favorite
+    handler: src.handlers.favorites.delete.delete_favorite
     events:
       - httpApi:
           path: /v0/favorites/{favorite_id}
@@ -187,7 +185,7 @@ functions:
             name: cognitoAuthorizer
 
   listUserFavorites:
-    handler: src/handlers/favorites/list.list_user_favorites
+    handler: src.handlers.favorites.list.list_user_favorites
     events:
       - httpApi:
           path: /v0/favorites
