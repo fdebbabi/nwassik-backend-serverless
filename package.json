@@ -1,14 +1,11 @@
 {
+  "devDependencies": {
+    "dotenv-cli": "^11.0.0"
+  },
   "scripts": {
-    "info:dev": "set -a && source .env && set +a && serverless info --stage dev",
-    "deploy:dev": "set -a && source .env && set +a && serverless deploy --stage dev",
-    "deploy:staging": "set -a && source .env && set +a && serverless deploy --stage staging",
-    "deploy:prod": "set -a && source .env && set +a && serverless deploy --stage prod",
-    "remove:dev": "set -a && source .env && set +a && serverless remove --stage dev",
-    "remove:staging": "set -a && source .env && set +a && serverless remove --stage staging",
-    "remove:prod": "set -a && source .env && set +a && serverless remove --stage prod",
-    "init-db:dev": "set -a && source .env && set +a && source venv/bin/activate && RUN_ENV=cloud STAGE=dev DATABASE_SECRET_NAME=nwassik/dev/admin-db-secret BASE_DOMAIN=https://api-dev.nwassik.com python scripts/init_db.py",
-    "init-db:staging": "RUN_ENV=cloud STAGE=staging AWS_REGION=eu-west-3 DATABASE_SECRET_NAME=nwassik/staging/admin-db-secret BASE_DOMAIN=https://api-staging.nwassik.com MAX_USER_CREATED_FAVORITES=100 MAX_USER_CREATED_REQUESTS=20 python scripts/init_db.py",
-    "init-db:prod": "RUN_ENV=cloud STAGE=prod AWS_REGION=eu-west-3 DATABASE_SECRET_NAME=nwassik/prod/admin-db-secret BASE_DOMAIN=https://api.nwassik.com MAX_USER_CREATED_FAVORITES=100 MAX_USER_CREATED_REQUESTS=20 python scripts/init_db.py"
+    "info": "dotenv -- serverless info --stage",
+    "deploy": "dotenv -- serverless deploy --stage",
+    "remove": "dotenv -- serverless remove --stage",
+    "init-db": "dotenv -- venv/bin/python scripts/init_db.py"
   }
 }
