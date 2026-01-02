@@ -12,8 +12,8 @@ import pytest
 
 
 @dataclass
-class TestUser:
-    """Test user data."""
+class E2EUser:
+    """E2E test user data."""
 
     username: str
     email: str
@@ -34,7 +34,7 @@ def test_user(
     cognito_client: Any,
     cognito_user_pool_id: str,
     cognito_client_id: str,
-) -> Generator[TestUser, None, None]:
+) -> Generator[E2EUser, None, None]:
     """Create a test user in Cognito, yield it, then clean up."""
     # Generate unique username/email
     timestamp = int(time.time())
@@ -83,7 +83,7 @@ def test_user(
     decoded = json.loads(base64.urlsafe_b64decode(payload))
     user_id = decoded["sub"]
 
-    user = TestUser(
+    user = E2EUser(
         username=username,
         email=email,
         password=password,
@@ -104,6 +104,6 @@ def test_user(
 
 
 @pytest.fixture(scope="class")
-def auth_headers(test_user: TestUser) -> dict:
+def auth_headers(test_user: E2EUser) -> dict:
     """Get authorization headers for authenticated requests."""
     return {"Authorization": f"Bearer {test_user.id_token}"}

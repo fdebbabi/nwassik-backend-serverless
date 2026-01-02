@@ -13,7 +13,7 @@ from collections.abc import Generator
 import httpx
 import pytest
 
-from tests.e2e.conftest import TestUser
+from tests.e2e.conftest import E2EUser
 
 pytestmark = pytest.mark.e2e
 
@@ -143,7 +143,7 @@ class TestRequestsCRUD:
         self,
         api_endpoint: str,
         auth_headers: dict,
-        test_user: TestUser,
+        test_user: E2EUser,
         created_request_id: str,
     ) -> None:
         """GET /v0/users/{id}/requests should return user's requests."""
