@@ -78,93 +78,51 @@ provider:
           - ${self:custom.cognitoAppClientId}
 
 functions:
-  # -----------------------------------------------------------------------------
-  # HEALTH CHECK (Public - no authentication)
-  # -----------------------------------------------------------------------------
-  healthCheck:
-    handler: src.handlers.health.check.health_check
+  api:
+    handler: src.handlers.main.handler
     events:
+      # Health (public)
       - httpApi:
           path: /health
           method: get
-
-  # -----------------------------------------------------------------------------
-  # REQUESTS
-  # -----------------------------------------------------------------------------
-  listRequests:
-    handler: src.handlers.requests.list.list_requests
-    events:
+      # Requests (mixed auth)
       - httpApi:
           path: /v0/requests
           method: get
-
-  createRequest:
-    handler: src.handlers.requests.create.create_request
-    events:
       - httpApi:
           path: /v0/requests
           method: post
           authorizer:
             name: cognitoAuthorizer
-
-  getRequest:
-    handler: src.handlers.requests.get.get_request
-    events:
       - httpApi:
           path: /v0/requests/{request_id}
           method: get
-
-  listUserRequests:
-    handler: src.handlers.requests.list_user_requests.list_user_requests
-    events:
-      - httpApi:
-          path: /v0/users/{user_id}/requests
-          method: get
-          authorizer:
-            name: cognitoAuthorizer
-
-  deleteRequest:
-    handler: src.handlers.requests.delete.delete_request
-    events:
       - httpApi:
           path: /v0/requests/{request_id}
           method: delete
           authorizer:
             name: cognitoAuthorizer
-
-  updateRequest:
-    handler: src.handlers.requests.update.update_request
-    events:
       - httpApi:
           path: /v0/requests/{request_id}
           method: patch
           authorizer:
             name: cognitoAuthorizer
-
-  # -----------------------------------------------------------------------------
-  # FAVORITES (All require authentication)
-  # -----------------------------------------------------------------------------
-  createFavorite:
-    handler: src.handlers.favorites.create.create_favorite
-    events:
+      - httpApi:
+          path: /v0/users/{user_id}/requests
+          method: get
+          authorizer:
+            name: cognitoAuthorizer
+      # Favorites (all require auth)
       - httpApi:
           path: /v0/favorites
           method: post
           authorizer:
             name: cognitoAuthorizer
-
-  deleteFavorite:
-    handler: src.handlers.favorites.delete.delete_favorite
-    events:
       - httpApi:
           path: /v0/favorites/{favorite_id}
           method: delete
           authorizer:
             name: cognitoAuthorizer
-
-  listUserFavorites:
-    handler: src.handlers.favorites.list.list_user_favorites
-    events:
       - httpApi:
           path: /v0/favorites
           method: get
