@@ -15,8 +15,8 @@ class GUID(TypeDecorator):
     """
 
     impl = CHAR
+    cache_ok = True
 
-    # FIXME: Add this to fix performance issue/warning from sqlalchemy (cache_ok = True)
     def load_dialect_impl(self, dialect):  # noqa
         if dialect.name == "postgresql":
             return dialect.type_descriptor(UUID(as_uuid=True))
