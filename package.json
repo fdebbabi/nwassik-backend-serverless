@@ -3,9 +3,9 @@
     "dotenv-cli": "^11.0.0"
   },
   "scripts": {
-    "info": "dotenv -- serverless info --stage",
-    "deploy": "dotenv -- serverless deploy --stage",
-    "remove": "dotenv -- serverless remove --stage",
+    "info": "NODE_NO_WARNINGS=1 dotenv -- serverless info --stage",
+    "deploy": "NODE_NO_WARNINGS=1 dotenv -- serverless deploy --stage",
+    "remove": "NODE_NO_WARNINGS=1 dotenv -- serverless remove --stage",
     "init-db": "dotenv -- venv/bin/python scripts/init_db.py"
   }
 }
